@@ -1,1 +1,1 @@
-export const DB_NAME = "edutech";
+export const DB_NAME = "edumathesis";
