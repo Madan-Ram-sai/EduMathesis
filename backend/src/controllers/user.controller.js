@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { registerUserService } from "../services/user.service.js";
+import { loginUserService, registerUserService } from "../services/user.service.js";
+import { verifyEmailService } from "../services/email-verification.service.js";
 
 const registeruser = asyncHandler(async (req, res) => {
   const { name,username, email, password, role } = req.body;
@@ -24,18 +25,19 @@ const registeruser = asyncHandler(async (req, res) => {
   );
 });
 
-const getUserProfile = asyncHandler(async (req, res) => {
-  const user = req.user; // Assuming user is attached to the request object after authentication
+const verifyEmail = asyncHandler(async (req,res) => {
+  const { token } = req.query;
+
+  await verifyEmailService(token);
 
   return res.status(200).json(
     new ApiResponse(
       200,
-      user,
-      "User profile retrieved successfully"
+      {},
+      "Email verified successfully"
     )
-  );
+  )
 });
-
 const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
 
@@ -51,5 +53,19 @@ const loginUser = asyncHandler(async (req, res) => {
   .cookie("refreshToken", loggedUser.refreshToken, options)
   .json(new ApiResponse(200,loggedUser.user,"User logged in successfully"))
 });
+
+// profile related controllers
+const getUserProfile = asyncHandler(async (req, res) => {
+  const user = req.user; // Assuming user is attached to the request object after authentication
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      user,
+      "User profile retrieved successfully"
+    )
+  );
+});
+
 
 export { registeruser, getUserProfile, loginUser };

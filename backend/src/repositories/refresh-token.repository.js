@@ -1,4 +1,4 @@
-import { withTransaction } from "../db/index.js";
+import { pool,withTransaction } from "../db/index.js";
 
 export async function storeRefreshToken({ userId, jti, tokenHash, expiresAt }) {
   await pool.query(
@@ -10,7 +10,7 @@ export async function storeRefreshToken({ userId, jti, tokenHash, expiresAt }) {
 
 export async function rotateRefreshToken({ userId, oldJti, oldTokenHash, newJti, newTokenHash, newExpiresAt }) {
   return withTransaction(async (client) => {
-    const revokeResult = await client.query(
+    const revokeResult = await client.query(// for security and loga the old refresh token and stored insted of deleting
       `UPDATE refresh_tokens
        SET is_revoked = TRUE, replaced_by = $1
        WHERE user_id = $2 AND jti = $3 AND token_hash = $4

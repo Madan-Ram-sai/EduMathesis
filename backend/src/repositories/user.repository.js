@@ -1,4 +1,4 @@
-// import { query } from "../db/index.js";
+import { pool } from "../db/index.js";
 
 const publicUserColumns = `
   id, name, email, avatar_url, role, is_email_verified,

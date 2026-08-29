@@ -110,26 +110,41 @@ CREATE TABLE IF NOT EXISTS invite_links (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. VIDEOS
-CREATE TABLE IF NOT EXISTS videos (
+-- 9. CONTENTS (shared parent for videos + posts)
+-- Every video and every post has a matching row here with the SAME id.
+-- This is what comments reference — one real FK instead of parent_type/parent_id.
+CREATE TABLE IF NOT EXISTS contents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
-    uploaded_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT DEFAULT '',
-    video_url TEXT NOT NULL,
-    thumbnail_url TEXT DEFAULT '',
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content_type VARCHAR(50) NOT NULL CHECK (content_type IN ('video', 'post')),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
--- 10. POSTS
+-- 10. VIDEOS (subtype of contents — video-specific fields only)
+CREATE TABLE IF NOT EXISTS videos (
+    id UUID PRIMARY KEY REFERENCES contents(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT DEFAULT '',
+    video_url TEXT NOT NULL,
+    thumbnail_url TEXT DEFAULT ''
+);
+
+-- 11. POSTS (subtype of contents — post-specific fields only)
 CREATE TABLE IF NOT EXISTS posts (
+    id UUID PRIMARY KEY REFERENCES contents(id) ON DELETE CASCADE,
+    post_type VARCHAR(50) NOT NULL CHECK (post_type IN ('announcement', 'doubt', 'general')),
+    content TEXT NOT NULL
+);
+
+-- 12. COMMENTS (references contents — works for both videos AND posts automatically)
+CREATE TABLE IF NOT EXISTS comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
-    created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('announcement', 'doubt', 'general')),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content_id UUID NOT NULL REFERENCES contents(id) ON DELETE CASCADE,
+    parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE DEFAULT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -165,20 +180,7 @@ CREATE TABLE IF NOT EXISTS assignment_submissions (
     UNIQUE (assignment_id, student_id)
 );
 
--- 13. COMMENTS
-CREATE TABLE IF NOT EXISTS comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    parent_type VARCHAR(50) NOT NULL CHECK (parent_type IN ('video', 'post')),
-    parent_id UUID NOT NULL,
-    parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE DEFAULT NULL,
-    content TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMPTZ DEFAULT NULL
-);
-
--- 14. CHAT REQUESTS
+-- 13. CHAT REQUESTS
 CREATE TABLE IF NOT EXISTS chat_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -190,7 +192,7 @@ CREATE TABLE IF NOT EXISTS chat_requests (
     CONSTRAINT check_sender_receiver_different CHECK (sender_id <> receiver_id)
 );
 
--- 15. CONVERSATIONS
+-- 14. CONVERSATIONS
 CREATE TABLE IF NOT EXISTS conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_one_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -201,7 +203,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     CONSTRAINT check_conversation_users_different CHECK (user_one_id <> user_two_id)
 );
 
--- 16. CHAT MESSAGES
+-- 15. CHAT MESSAGES
 CREATE TABLE IF NOT EXISTS chat_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
@@ -213,7 +215,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
--- 17. NOTIFICATIONS
+-- 16. NOTIFICATIONS
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -236,7 +238,7 @@ BEGIN
     FOREACH table_name IN ARRAY ARRAY[
         'users', 'email_verifications', 'password_resets', 'refresh_tokens',
         'teacher_requests', 'communities', 'community_members', 'invite_links',
-        'videos', 'posts', 'assignments', 'assignment_submissions', 'comments',
+        'contents', 'assignments', 'assignment_submissions', 'comments',
         'chat_requests', 'conversations', 'chat_messages', 'notifications'
     ]
     LOOP
@@ -253,10 +255,10 @@ $$;
 -- Foreign-key columns are not indexed automatically by PostgreSQL.
 CREATE INDEX IF NOT EXISTS idx_communities_created_by ON communities(created_by);
 CREATE INDEX IF NOT EXISTS idx_community_members_user_id ON community_members(user_id);
-CREATE INDEX IF NOT EXISTS idx_videos_community_id ON videos(community_id);
-CREATE INDEX IF NOT EXISTS idx_posts_community_id ON posts(community_id);
+CREATE INDEX IF NOT EXISTS idx_contents_community_id ON contents(community_id);
+CREATE INDEX IF NOT EXISTS idx_contents_type ON contents(content_type);
 CREATE INDEX IF NOT EXISTS idx_assignments_community_id ON assignments(community_id);
 CREATE INDEX IF NOT EXISTS idx_assignment_submissions_assignment_id ON assignment_submissions(assignment_id);
-CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_type, parent_id);
+CREATE INDEX IF NOT EXISTS idx_comments_content_id ON comments(content_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id, created_at DESC);

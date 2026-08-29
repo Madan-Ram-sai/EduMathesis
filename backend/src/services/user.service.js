@@ -1,24 +1,9 @@
 import bcrypt from "bcrypt";
-import {
-  getActiveUserById,
-  getActiveUserForAuthentication,
-  getUser,
-  insertUser,
-} from "../repositories/user.repository.js";
-import {
-  revokeRefreshToken,
-  rotateRefreshToken,
-  storeRefreshToken,
-} from "../repositories/refresh-token.repository.js";
+import {getActiveUserById,getActiveUserForAuthentication,getUser,insertUser,} from "../repositories/user.repository.js";
+import {revokeRefreshToken,rotateRefreshToken,storeRefreshToken,} from "../repositories/refresh-token.repository.js";
 import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import {
-  createAccessToken,
-  createRefreshToken,
-  getTokenExpiry,
-  hashRefreshToken,
-  verifyRefreshToken,
-} from "./token.service.js";
+import {createAccessToken,createRefreshToken,getTokenExpiry,hashRefreshToken,verifyRefreshToken,} from "./token.service.js";
 
 const registerUserService = async ({ name, username, email, password, role, avatarLocalPath }) => {
   if (!name?.trim() || !username?.trim() || !email?.trim() || !password?.trim()) {
@@ -41,9 +26,6 @@ const registerUserService = async ({ name, username, email, password, role, avat
   }
   let avatarUrl = "";
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-  if (!avatar) {
-    throw new ApiError(500, "Failed to upload avatar");
-  }
   avatarUrl = avatar.url;
 
   const allowedRoles = ["student", "teacher", "admin"];
@@ -59,7 +41,7 @@ const registerUserService = async ({ name, username, email, password, role, avat
       username: username.trim(),
       email: normalizedEmail,
       passwordHash,
-      role: role || "student",
+      role: "student",
       avatarUrl,
     });
   } catch (error) {
