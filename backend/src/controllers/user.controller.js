@@ -38,6 +38,28 @@ const verifyEmail = asyncHandler(async (req,res) => {
     )
   )
 });
+
+const resendVerificationEmail = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email?.trim()) {
+    throw new ApiError(400, "Email is required");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await getUser({ email: normalizedEmail, username: "" });
+
+  // Always return the same success response whether or not the account
+  // exists — prevents leaking which emails are registered.
+  if (user && !user.is_email_verified) {
+    await generateAndSendVerificationEmail(user);
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, {}, "If an account with that email exists and is unverified, a verification link has been sent.")
+  );
+});
+
 const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
 
@@ -68,4 +90,4 @@ const getUserProfile = asyncHandler(async (req, res) => {
 });
 
 
-export { registeruser, getUserProfile, loginUser };
+export { registeruser, getUserProfile, loginUser , verifyEmail, resendVerificationEmail };
