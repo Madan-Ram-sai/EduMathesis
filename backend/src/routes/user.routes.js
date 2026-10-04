@@ -17,5 +17,7 @@ router.route("/register").post(
 router.route("/login").post(loginUser);
 router.route("/verify-email").get(verifyEmail);
 router.route("/resend-verification").post(resendVerificationEmail);
+router.route("/logout").post(logoutUser);
+router.route("/forgot-password").post(forgeotPassword);
 
 export default router;

@@ -140,4 +140,31 @@ const logoutUserSession = async (refreshToken) => {
   }
 };
 
-export { registerUserService, loginUserService, refreshUserSession, logoutUserSession };
+const changeUserPasswordService = async ({ userId, currentPassword, newPassword }) => {
+  if(newPassword.length < 8){
+    throw new ApiError(400, "New password must be at least 8 characters long");
+  }
+  if((newPassword.match(/[a-z]/) && newPassword.match(/[A-Z]/) && newPassword.match(/[0-9]/) && newPassword.match(/[^a-zA-Z\d]/))){
+    throw new ApiError(400, "New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
+  }  
+  const user = await getActiveUserById(userId);
+  if(!user){
+    throw new ApiError(404, "User not found");
+  }
+  const isPasswordValid= await bcrypt.compare(currentPassword, user.password_hash);
+  if(!isPasswordValid){
+    throw new ApiError(401, "Current password is incorrect");
+  }
+  const newPasswordHash = await bcrypt.hash(newPassword, 12);
+  if(await bcrypt.compare(newPassword, user.password_hash)){
+    throw new ApiError(400, "New password must be different from the current password");
+  }
+  await revokeRefreshToken({ userId: user.id });
+  const updatedUser = await updateUserProfileRepo({userId, updateData: { password_hash: newPasswordHash }});
+
+  if(!updatedUser){
+    throw new ApiError(404, "User not found");
+  }
+  return updatedUser;
+};
+export { registerUserService, loginUserService, refreshUserSession, logoutUserSession,changeUserPasswordService };
