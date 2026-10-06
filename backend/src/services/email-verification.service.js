@@ -1,31 +1,41 @@
-import {ApiError} from "../utils/ApiError.js";
-import {sendEmail} from "../utils/mail.js";
+import { ApiError } from "../utils/ApiError.js";
+import { sendEmail } from "../utils/mail.js";
 import crypto from "crypto";
-import {deleteExistingVerificationToken,insertVerificationToken,
-    findVerificationByToken,markTokenAsVerified,
-    markUserEmailVerified,} from "../models/email-verification.repository.js";
+import {
+  deleteExistingVerificationToken,
+  insertVerificationToken,
+  findVerificationByToken,
+  markTokenAsVerified,
+  markUserEmailVerified,
+} from "../repositories/email-verification.repository.js";
 
 const TOKEN_EXPIRY_HOURS = 24;
 
-export const generateAndSendVerificationEmail = async (user) =>{
-    await deleteExistingVerificationToken(user.id);// to delete old token if exists , as it won't work
+export const generateAndSendVerificationEmail = async (user) => {
+  await deleteExistingVerificationToken(user.id);
 
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
-    await insertVerificationToken(user.id, token, expiresAt);
+  await insertVerificationToken({ userId: user.id, token, expiresAt });
 
-    const verifyUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
-    
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+  const verifyUrl = `${clientUrl}/verify-email?token=${token}`;
+
+  try {
     await sendEmail({
-        to: user.email,
-        subject: "Verify your email address",
-        html: `
+      to: user.email,
+      subject: "Verify your email address",
+      html: `
         <p>Hi ${user.name},</p>
         <p>Click the link below to verify your email. This link expires in ${TOKEN_EXPIRY_HOURS} hours.</p>
-        <a href="${verifyUrl}">${verifyUrl}</a>
-        `,
+        <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+      `,
     });
+  } catch (emailError) {
+    console.error("Failed to send verification email:", emailError);
+    // Don't crash registration if mail server fails; token is generated and can be resent.
+  }
 };
 
 export const verifyEmailService = async (token) => {

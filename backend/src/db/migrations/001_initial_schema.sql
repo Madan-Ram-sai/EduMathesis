@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255),
     avatar_url TEXT DEFAULT '',
+    bio TEXT DEFAULT '',
     role VARCHAR(50) DEFAULT 'student' CHECK (role IN ('student', 'teacher', 'admin')),
     is_email_verified BOOLEAN DEFAULT FALSE,
     oauth_provider VARCHAR(50) DEFAULT NULL,

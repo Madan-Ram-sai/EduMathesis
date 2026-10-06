@@ -2,8 +2,6 @@ import { pool } from "../db/index.js";
 
 /**
  * Deletes any existing unverified tokens for this user before issuing a new one.
- * Keeps only ONE valid token active at a time per user (old links stop working
- * once a new one is requested).
  */
 export async function deleteUnverifiedTokensForUser(userId) {
   await pool.query(
@@ -11,6 +9,7 @@ export async function deleteUnverifiedTokensForUser(userId) {
     [userId]
   );
 }
+export const deleteExistingVerificationToken = deleteUnverifiedTokensForUser;
 
 export async function insertVerificationToken({ userId, token, expiresAt }) {
   const result = await pool.query(
@@ -34,14 +33,14 @@ export async function findVerificationByToken(token) {
 
 export async function markTokenAsVerified(token) {
   await pool.query(
-    `UPDATE email_verifications SET verified_at = now() WHERE token = $1`,
+    `UPDATE email_verifications SET verified_at = NOW() WHERE token = $1`,
     [token]
   );
 }
 
 export async function markUserEmailVerified(userId) {
   await pool.query(
-    `UPDATE users SET is_email_verified = true WHERE id = $1`,
+    `UPDATE users SET is_email_verified = TRUE WHERE id = $1`,
     [userId]
   );
 }
