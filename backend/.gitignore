@@ -5,3 +5,7 @@ node_modules/
 public/temp/*
 !public/temp/.gitkeep
 .DS_Store
+
+/generated/prisma
+
+/generated/prisma
