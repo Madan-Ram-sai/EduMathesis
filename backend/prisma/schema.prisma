@@ -11,7 +11,7 @@ datasource db {
 }
 
 model User {
-  id              String    @id @default(uuid()) @db.Uuid
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name            String    @db.VarChar(255)
   username        String    @unique @db.VarChar(255)
   email           String    @unique @db.VarChar(255)
@@ -50,7 +50,7 @@ model User {
 }
 
 model email_verifications {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id     String    @db.Uuid
   user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   token       String    @unique @db.VarChar(255)
@@ -63,7 +63,7 @@ model email_verifications {
 }
 
 model password_resets {
-  id         String    @id @default(uuid()) @db.Uuid
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    String    @db.Uuid
   user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   token      String    @unique @db.VarChar(255)
@@ -76,7 +76,7 @@ model password_resets {
 }
 
 model refresh_tokens {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id     String    @db.Uuid
   user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   jti         String    @unique @db.VarChar(255)
@@ -91,7 +91,7 @@ model refresh_tokens {
 }
 
 model teacher_requests {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id     String    @db.Uuid
   user        User      @relation("teacher_requester", fields: [user_id], references: [id], onDelete: Cascade)
   status      String?   @default("pending") @db.VarChar(50)
@@ -105,7 +105,7 @@ model teacher_requests {
 }
 
 model communities {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String    @db.VarChar(255)
   description String?   @default("") @db.Text
   created_by  String    @db.Uuid
@@ -125,7 +125,7 @@ model communities {
 }
 
 model community_members {
-  id                String      @id @default(uuid()) @db.Uuid
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   community_id      String      @db.Uuid
   community         communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
   user_id           String      @db.Uuid
@@ -141,7 +141,7 @@ model community_members {
 }
 
 model invite_links {
-  id           String      @id @default(uuid()) @db.Uuid
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   community_id String      @db.Uuid
   community    communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
   created_by   String      @db.Uuid
@@ -157,7 +157,7 @@ model invite_links {
 }
 
 model contents {
-  id           String      @id @default(uuid()) @db.Uuid
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   community_id String      @db.Uuid
   community    communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
   created_by   String      @db.Uuid
@@ -197,7 +197,7 @@ model posts {
 }
 
 model comments {
-  id                String     @id @default(uuid()) @db.Uuid
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id           String     @db.Uuid
   user              User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
   content_id        String     @db.Uuid
@@ -215,7 +215,7 @@ model comments {
 }
 
 model assignments {
-  id           String      @id @default(uuid()) @db.Uuid
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   community_id String      @db.Uuid
   community    communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
   created_by   String      @db.Uuid
@@ -235,7 +235,7 @@ model assignments {
 }
 
 model assignment_submissions {
-  id            String      @id @default(uuid()) @db.Uuid
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   assignment_id String      @db.Uuid
   assignment    assignments @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
   student_id    String      @db.Uuid
@@ -254,7 +254,7 @@ model assignment_submissions {
 }
 
 model chat_requests {
-  id           String    @id @default(uuid()) @db.Uuid
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   sender_id    String    @db.Uuid
   sender       User      @relation("chat_request_sender", fields: [sender_id], references: [id], onDelete: Cascade)
   receiver_id  String    @db.Uuid
@@ -268,7 +268,7 @@ model chat_requests {
 }
 
 model conversations {
-  id          String    @id @default(uuid()) @db.Uuid
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_one_id String    @db.Uuid
   user_one    User      @relation("conversation_user_one", fields: [user_one_id], references: [id], onDelete: Cascade)
   user_two_id String    @db.Uuid
@@ -283,7 +283,7 @@ model conversations {
 }
 
 model chat_messages {
-  id              String        @id @default(uuid()) @db.Uuid
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   conversation_id String        @db.Uuid
   conversation    conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
   sender_id       String        @db.Uuid
@@ -299,7 +299,7 @@ model chat_messages {
 }
 
 model notifications {
-  id           String       @id @default(uuid()) @db.Uuid
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id      String       @db.Uuid
   user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
   type         String       @db.VarChar(50)
