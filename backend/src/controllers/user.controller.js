@@ -1,3 +1,4 @@
+import { prisma } from "../db/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -23,14 +24,19 @@ import {
   generateAndSendPasswordResetEmail,
   resetPasswordWithTokenService,
 } from "../services/password-reset.service.js";
-import { getUserByEmail } from "../repositories/user.repository.js";
-
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 };
 
+const getUserByEmail = async ({email})=>{
+  return await prisma.user.findUnique({
+    where:{
+      email:email,
+    }
+  })
+} 
 /**
  * Register user controller
  */
@@ -218,13 +224,13 @@ const getUserProfile = asyncHandler(async (req, res) => {
  */
 const updateUserProfile = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const { name, username, bio } = req.body;
+  const { name, newusername, bio } = req.body;
   const avatarLocalPath = req.file?.path || req.files?.avatar?.[0]?.path;
 
   const updatedUser = await updateUserProfileService({
     userId,
     name,
-    username,
+    newusername,
     bio,
     avatarLocalPath,
   });

@@ -1,27 +1,5 @@
 import bcrypt from "bcrypt";
-import {
-  getActiveUserById,
-  getActiveUserForAuthentication,
-  getUser,
-  getUserByEmail,
-  getUserByOAuth,
-  insertUser,
-  updateOAuthDetails,
-  updateUserProfileRepo,
-  changeUserPasswordRepo,
-  updateUserRole,
-  createTeacherRequestRepo,
-  getTeacherRequestByUserIdRepo,
-  getAllTeacherRequestsRepo,
-  getTeacherRequestByIdRepo,
-  updateTeacherRequestStatusRepo,
-  searchTeachersRepo,
-} from "../repositories/user.repository.js";
-import {
-  revokeRefreshToken,
-  rotateRefreshToken,
-  storeRefreshToken,
-} from "../repositories/refresh-token.repository.js";
+import { prisma } from "../db/index.js";
 import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import {
@@ -30,9 +8,24 @@ import {
   getTokenExpiry,
   hashRefreshToken,
   verifyRefreshToken,
+   revokeRefreshToken,
+  rotateRefreshToken,
+  storeRefreshToken,
 } from "./token.service.js";
 import { generateAndSendVerificationEmail } from "./email-verification.service.js";
 
+const pubSel = {
+  id: true, name: true, username: true, email: true, avatarUrl: true, bio: true, role: true,
+  isEmailVerified: true, oauthProvider: true, oauthId: true, createdAt: true, updatedAt: true,
+};
+
+const getActiveUserById = ({userID}) =>{
+  return prisma.user.findFirst({
+    where:{
+      id:userID,
+    }
+  });
+}
 /**
  * Register a new user (always receives 'student' role by default).
  * Email verification is sent upon successful registration.
@@ -59,13 +52,23 @@ const registerUserService = async ({
     finalUsername = `${emailPrefix}_${randomNum}`;
   }
 
-  const existingUser = await getActiveUserForAuthentication(finalUsername, normalizedEmail);
+  const existingUsers=await prisma.user.findFirst({// to check that email oor username is taken already
+    where:{
+      OR:[
+        { username: finalUsername },
+        { email: normalizedEmail }
+      ],
+      deletedAt:null,
+    },
+  });
 
-  if (existingUser.email_exists) {
+  const emailTaken=existingUsers.some((r)=> r.email===normalizedEmail);//if any one with eamil exist then a row will be in existedusers and we check
+  if (emailTaken) {
     throw new ApiError(409, "User with this email already exists");
   }
-
-  if (existingUser.username_exists) {
+  
+  const usernameTaken=existingUsers.some((r)=> r.username===finalUsername);//if any one with eamil exist then a row will be in existedusers and we check
+  if (usernameTaken) {
     throw new ApiError(409, "User with this username already exists");
   }
 
@@ -81,15 +84,18 @@ const registerUserService = async ({
 
   let newUser;
   try {
-    newUser = await insertUser({
-      name: name.trim(),
-      username: finalUsername,
-      email: normalizedEmail,
-      passwordHash,
-      role: "student", // Global role is fixed to student on registration
-      avatarUrl,
-      bio: bio?.trim() || "",
-      isEmailVerified: false,
+    newUser = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        username: finalUsername,
+        email: normalizedEmail,
+        passwordHash,
+        role: "student", // Global role is fixed to student on registration
+        avatarUrl,
+        bio: bio?.trim() || "",
+        isEmailVerified: false,
+      },
+      select: pubSel,
     });
   } catch (error) {
     if (error.code === "23505") {
@@ -114,8 +120,17 @@ const loginUserService = async ({ email, username, password }) => {
   }
 
   const normalizedEmail = email?.toLowerCase().trim() || "";
-  const user = await getUser({ email: normalizedEmail, username: username?.trim() || "" });
+  // const user = await getUser({ email: normalizedEmail, username: username?.trim() || "" });
 
+  const user = await prisma.user.findFirst({
+    where: {
+        OR: [
+          { email: normalizedEmail },
+          { username: username?.trim() }
+        ]
+      },
+      deletedAt: null
+  });
   if (!user) {
     throw new ApiError(401, "Invalid email/username or password");
   }
@@ -164,18 +179,24 @@ const oauthLoginOrRegisterService = async ({ provider, oauthId, email, name, ava
   }
 
   const normalizedEmail = email.toLowerCase().trim();
-  let user = await getUserByOAuth(provider, oauthId);
+  let user = await prisma.user.findFirst({
+    where: { oauthProvider: provider, oauthId, deletedAt: null },
+    select: pubSel,
+  });
 
   if (!user) {
     // Check if user exists by email
-    const existingUser = await getUserByEmail(normalizedEmail);
+    existingUser = await prisma.user.findFirst({
+      where: { email: normalizedEmail, deletedAt: null },
+      select: { id: true },
+    });
 
     if (existingUser) {
       // Link OAuth provider to existing user account and mark email as verified
-      user = await updateOAuthDetails({
-        userId: existingUser.id,
-        provider,
-        oauthId,
+      user = await prisma.user.update({
+        where: { id: existingUser.id, deletedAt: null },
+        data: { oauthProvider: provider, oauthId, isEmailVerified: true },
+        select: pubSel,
       });
     } else {
       // Create a new OAuth user (automatically email-verified)
@@ -183,17 +204,20 @@ const oauthLoginOrRegisterService = async ({ provider, oauthId, email, name, ava
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const generatedUsername = `${emailPrefix}_${randomNum}`;
 
-      user = await insertUser({
-        name: name || emailPrefix,
-        username: generatedUsername,
-        email: normalizedEmail,
-        passwordHash: null,
-        role: "student",
-        avatarUrl: avatarUrl || "",
-        bio: "",
-        isEmailVerified: true,
-        oauthProvider: provider,
-        oauthId,
+      user = await prisma.user.create({
+        data: {
+          name: name || emailPrefix,
+          username: generatedUsername,
+          email: normalizedEmail,
+          passwordHash: null,
+          role: "student",
+          avatarUrl: avatarUrl || "",
+          bio: "",
+          isEmailVerified: true,
+          oauthProvider: provider,
+          oauthId,
+        },
+        select: pubSel,
       });
     }
   }
@@ -272,22 +296,33 @@ const logoutUserSession = async (refreshToken) => {
 /**
  * Authenticated user profile update.
  */
-const updateUserProfileService = async ({ userId, name, username, bio, avatarLocalPath }) => {
+const updateUserProfileService = async ({ userId, name, newusername, bio, avatarLocalPath }) => {
   const updateData = {};
 
   if (name !== undefined && name.trim() !== "") {
     updateData.name = name.trim();
   }
-  if (username !== undefined && username.trim() !== "") {
-    const cleanUsername = username.trim();
-    const existing = await getActiveUserForAuthentication(cleanUsername, "");
-    if (existing.username_exists) {
-      const currentUser = await getActiveUserById(userId);
-      if (currentUser?.username !== cleanUsername) {
-        throw new ApiError(409, "Username is already taken");
+  if (newusername !== undefined && newusername.trim() !== "") {
+    const cleanNewUsername = newusername.trim();
+    const existing = await prisma.user.findFirst({
+      where:{
+        username: cleanNewUsername,
+      },
+      select:{
+        id:true,
       }
+    });
+    //if that username is of that user only then 
+    if(existing && existing.id === userId) {
+      // no need to update
     }
-    updateData.username = cleanUsername;
+    // Check if the new username is already taken by another user
+    else if (existing && existing.id !== userId) {//existing.id !== userId me
+      throw new ApiError(409, "Username is already taken");
+    }
+    else{
+      updateData.username = cleanNewUsername;
+    }
   }
   if (bio !== undefined) {
     updateData.bio = bio.trim();
@@ -304,9 +339,17 @@ const updateUserProfileService = async ({ userId, name, username, bio, avatarLoc
     throw new ApiError(400, "At least one field (name, username, bio, avatar) is required to update profile");
   }
 
-  const updatedUser = await updateUserProfileRepo(userId, updateData);
-  if (!updatedUser) {
-    throw new ApiError(404, "User not found");
+  let updatedUser;
+  try {
+    updatedUser = await prisma.user.update({
+      where: { id: userId, deletedAt: null },
+      data: updateData,
+      select: pubSel,
+    });
+  } catch (e) {
+    if (e.code === "P2025") throw new ApiError(404, "User not found");
+    if (e.code === "P2002") throw new ApiError(409, "Username is already taken");
+    throw e;
   }
 
   return updatedUser;
@@ -333,21 +376,31 @@ const changeUserPasswordService = async ({ userId, currentPassword, newPassword 
     throw new ApiError(404, "User not found");
   }
 
-  const userWithPassword = await getUser({ email: user.email, username: user.username });
-  if (!userWithPassword?.password_hash) {
+  // const userWithPassword = await getUser({ email: user.email, username: user.username });
+  const userWithPassword = await prisma.user.findFirst({
+    where: {
+        OR: [
+          { email: normalizedEmail },
+          { username: username?.trim() }
+        ]
+      },
+      deletedAt: null
+  });
+  if (!userWithPassword?.passwordHash) {
     throw new ApiError(400, "OAuth accounts do not have a password. Use password reset or OAuth login.");
   }
 
-  const isPasswordValid = await bcrypt.compare(currentPassword, userWithPassword.password_hash);
+  const isPasswordValid = await bcrypt.compare(currentPassword, userWithPassword.passwordHash);
   if (!isPasswordValid) {
     throw new ApiError(401, "Current password is incorrect");
   }
 
   const newPasswordHash = await bcrypt.hash(newPassword, 12);
-  await changeUserPasswordRepo({ userId, newPasswordHash });
-
-  // Revoke refresh tokens for security
-  await revokeRefreshToken({ userId });
+  // update password and Revoke refresh tokens for security
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { passwordHash: newPasswordHash } }),
+    prisma.refreshToken.updateMany({ where: { userId, isRevoked: false }, data: { isRevoked: true } }),
+  ]);
 
   return await getActiveUserById(userId);
 };
@@ -369,19 +422,28 @@ const requestTeacherRoleService = async (userId) => {
     throw new ApiError(400, `User already has global role '${user.role}'`);
   }
 
-  const existingRequest = await getTeacherRequestByUserIdRepo(userId);
+  const existingRequest = await prisma.teacherRequest.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
   if (existingRequest && existingRequest.status === "pending") {
     throw new ApiError(400, "You already have a pending teacher role request.");
   }
 
-  return await createTeacherRequestRepo(userId);
+  return await prisma.teacherRequest.create({ data: { userId, status: "pending" } });
 };
 
 /**
  * Admin views all teacher requests.
  */
 const getTeacherRequestsService = async (status = null) => {
-  return await getAllTeacherRequestsRepo(status);
+  return await prisma.teacherRequest.findMany({
+    where: {
+      status: status || undefined
+    },
+    orderBy: { createdAt: "desc" },
+    include: { user: { select: { name: true, email: true, avatarUrl: true, bio: true } } },
+  });
 };
 
 /**
@@ -391,8 +453,8 @@ const reviewTeacherRequestService = async ({ requestId, adminId, status }) => {
   if (!["approved", "rejected"].includes(status)) {
     throw new ApiError(400, "Status must be either 'approved' or 'rejected'");
   }
-
-  const request = await getTeacherRequestByIdRepo(requestId);
+ 
+  const request = await prisma.teacherRequest.findUnique({ where: { id: requestId } });
   if (!request) {
     throw new ApiError(404, "Teacher request not found");
   }
@@ -402,15 +464,14 @@ const reviewTeacherRequestService = async ({ requestId, adminId, status }) => {
   }
 
   // Update request status
-  const updatedRequest = await updateTeacherRequestStatusRepo({
-    requestId,
-    status,
-    adminId,
+  const updatedRequest = await prisma.teacherRequest.update({
+    where: { id: requestId },
+    data: { status, reviewedBy: adminId, reviewedAt: new Date() },
   });
 
   // On approval, update user's global role to teacher
   if (status === "approved") {
-    await updateUserRole({ userId: request.user_id, role: "teacher" });
+    await prisma.user.update({ where: { id: request.userId }, data: { role: "teacher" } });
   }
 
   return updatedRequest;
@@ -421,7 +482,22 @@ const reviewTeacherRequestService = async ({ requestId, adminId, status }) => {
  * ============================================================ */
 
 const searchTeachersService = async ({ query = "", limit = 20, offset = 0 }) => {
-  return await searchTeachersRepo({ query, limit, offset });
+  const q = query.trim();
+  return await prisma.user.findMany({
+    where: {
+      role: { in: ["teacher", "admin"] },
+      deletedAt: null,
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { username: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    orderBy: [ { name: "asc" }, { id: "asc" }],//Stable pagination. Many users can share a name, and the DB may order ties differently between page requests, so a user could appear on two pages or none. Add a tiebreaker:
+    take: Number(limit),
+    skip: Number(offset),
+    select: pubSel,
+  });
 };
 
 const getUserProfileService = async (userId) => {

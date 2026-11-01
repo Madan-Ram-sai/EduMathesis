@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { createHash, randomUUID } from "crypto";
+import { prisma } from "../db/index.js";
 
 export function createAccessToken(user) {
   return jwt.sign(
@@ -31,3 +32,23 @@ export function getTokenExpiry(token) {
   const { exp } = jwt.decode(token);
   return new Date(exp * 1000);
 }
+
+export const storeRefreshToken = ({ userId, jti, tokenHash, expiresAt }) =>
+  prisma.refreshToken.create({ data: { userId, jti, tokenHash, expiresAt } });
+
+export const revokeRefreshToken = ({ userId, jti }) =>
+  prisma.refreshToken.updateMany({ where: { userId, jti, isRevoked: false }, data: { isRevoked: true } });
+
+export const revokeAllUserTokens = (userId, db = prisma) =>
+  db.refreshToken.updateMany({ where: { userId, isRevoked: false }, data: { isRevoked: true } });
+
+export const rotateRefreshToken = ({ userId, oldJti, oldTokenHash, newJti, newTokenHash, newExpiresAt }) =>
+  prisma.$transaction(async (tx) => {
+    const { count } = await tx.refreshToken.updateMany({
+      where: { userId, jti: oldJti, tokenHash: oldTokenHash, isRevoked: false, expiresAt: { gt: new Date() } },
+      data: { isRevoked: true, replacedBy: newJti },
+    });
+    if (count !== 1) return false;
+    await tx.refreshToken.create({ data: { userId, jti: newJti, tokenHash: newTokenHash, expiresAt: newExpiresAt } });
+    return true;
+  });

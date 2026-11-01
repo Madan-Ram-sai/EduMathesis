@@ -10,308 +10,350 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  student
+  teacher
+  admin
+}
+
+enum TeacherRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum CommunityRole {
+  student
+  teacher
+}
+
+enum ContentType {
+  video
+  post
+}
+
+enum PostType {
+  announcement
+  doubt
+  general
+}
+
+enum AssignmentSubmissionStatus {
+  submitted
+  late
+  graded
+}
+
+enum ChatRequestStatus {
+  pending
+  accepted
+  rejected
+}
+
+enum NotificationType {
+  new_assignment
+  new_video
+  doubt_reply
+  chat_request
+  teacher_approved
+}
+
 model User {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String    @db.VarChar(255)
-  username        String    @unique @db.VarChar(255)
-  email           String    @unique @db.VarChar(255)
-  passwordHash    String?   @map("password_hash") @db.VarChar(255)
-  avatarUrl       String?   @default("") @map("avatar_url") @db.Text
-  bio             String?   @default("") @db.Text
-  role            String?   @default("student") @db.VarChar(50)
-  isEmailVerified Boolean?  @default(false) @map("is_email_verified")
-  oauthProvider   String?   @map("oauth_provider") @db.VarChar(50)
-  oauthId         String?   @map("oauth_id") @db.VarChar(255)
-  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  id                      String                 @id @default(uuid()) @db.Uuid
+  name                    String                 @db.VarChar(255)
+  username                String                 @unique @db.VarChar(255)
+  email                   String                 @unique @db.VarChar(255)
+  passwordHash            String?                @map("password_hash") @db.VarChar(255)
+  avatarUrl               String?                @default("") @map("avatar_url") @db.Text
+  bio                     String?                @default("") @db.Text
+  role                    Role                   @default(student)
+  isEmailVerified         Boolean                @default(false) @map("is_email_verified")
+  oauthProvider           String?                @map("oauth_provider") @db.VarChar(50)
+  oauthId                 String?                @map("oauth_id") @db.VarChar(255)
+  createdAt               DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt               DateTime?              @map("deleted_at") @db.Timestamptz
+  emailVerifications      EmailVerification[]
+  passwordResets          PasswordReset[]
+  refreshTokens           RefreshToken[]
+  teacherRequests         TeacherRequest[]       @relation("teacher_requester")
+  reviewedTeacherRequests TeacherRequest[]       @relation("teacher_reviewer")
+  communitiesCreated      Community[]            @relation("community_creator")
+  communityMemberships    CommunityMember[]
+  inviteLinksCreated      InviteLink[]
+  contentsCreated         Content[]
+  comments                Comment[]
+  assignmentsCreated      Assignment[]
+  assignmentSubmissions   AssignmentSubmission[]
+  chatRequestsSent        ChatRequest[]          @relation("chat_request_sender")
+  chatRequestsReceived    ChatRequest[]          @relation("chat_request_receiver")
+  conversationsAsUserOne  Conversation[]         @relation("conversation_user_one")
+  conversationsAsUserTwo  Conversation[]         @relation("conversation_user_two")
+  chatMessages            ChatMessage[]
+  notifications           Notification[]
 
-  email_verifications       email_verifications[]
-  password_resets           password_resets[]
-  refresh_tokens            refresh_tokens[]
-  teacher_requests          teacher_requests[]       @relation("teacher_requester")
-  reviewed_requests         teacher_requests[]       @relation("teacher_reviewer")
-  communities_created       communities[]            @relation("community_creator")
-  community_memberships     community_members[]
-  invite_links_created      invite_links[]
-  contents_created          contents[]
-  comments                  comments[]
-  assignments_created       assignments[]
-  assignment_submissions    assignment_submissions[]
-  chat_requests_sent        chat_requests[]          @relation("chat_request_sender")
-  chat_requests_received    chat_requests[]          @relation("chat_request_receiver")
-  conversations_as_user_one conversations[]          @relation("conversation_user_one")
-  conversations_as_user_two conversations[]          @relation("conversation_user_two")
-  chat_messages             chat_messages[]
-  notifications             notifications[]
-
-  @@index([email], map: "idx_users_email")
   @@map("users")
 }
 
-model email_verifications {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id     String    @db.Uuid
-  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  token       String    @unique @db.VarChar(255)
-  expires_at  DateTime  @db.Timestamptz
-  verified_at DateTime? @db.Timestamptz
-  created_at  DateTime? @default(now()) @db.Timestamptz
-  updated_at  DateTime? @default(now()) @db.Timestamptz
+model EmailVerification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String    @unique @db.VarChar(255)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("email_verifications")
 }
 
-model password_resets {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String    @db.Uuid
-  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  token      String    @unique @db.VarChar(255)
-  expires_at DateTime  @db.Timestamptz
-  used_at    DateTime? @db.Timestamptz
-  created_at DateTime? @default(now()) @db.Timestamptz
-  updated_at DateTime? @default(now()) @db.Timestamptz
+model PasswordReset {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("password_resets")
 }
 
-model refresh_tokens {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id     String    @db.Uuid
-  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  jti         String    @unique @db.VarChar(255)
-  token_hash  String    @db.VarChar(255)
-  is_revoked  Boolean?  @default(false)
-  replaced_by String?   @db.VarChar(255)
-  expires_at  DateTime  @db.Timestamptz
-  created_at  DateTime? @default(now()) @db.Timestamptz
-  updated_at  DateTime? @default(now()) @db.Timestamptz
+model RefreshToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jti        String   @unique @db.VarChar(255)
+  tokenHash  String   @map("token_hash") @db.VarChar(255)
+  isRevoked  Boolean  @default(false) @map("is_revoked")
+  replacedBy String?  @map("replaced_by") @db.VarChar(255)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("refresh_tokens")
 }
 
-model teacher_requests {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id     String    @db.Uuid
-  user        User      @relation("teacher_requester", fields: [user_id], references: [id], onDelete: Cascade)
-  status      String?   @default("pending") @db.VarChar(50)
-  reviewed_by String?   @db.Uuid
-  reviewer    User?     @relation("teacher_reviewer", fields: [reviewed_by], references: [id], onDelete: SetNull)
-  reviewed_at DateTime? @db.Timestamptz
-  created_at  DateTime? @default(now()) @db.Timestamptz
-  updated_at  DateTime? @default(now()) @db.Timestamptz
+model TeacherRequest {
+  id         String               @id @default(uuid()) @db.Uuid
+  userId     String               @map("user_id") @db.Uuid
+  user       User                 @relation("teacher_requester", fields: [userId], references: [id], onDelete: Cascade)
+  status     TeacherRequestStatus @default(pending)
+  reviewedBy String?              @map("reviewed_by") @db.Uuid
+  reviewer   User?                @relation("teacher_reviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewedAt DateTime?            @map("reviewed_at") @db.Timestamptz
+  createdAt  DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime             @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("teacher_requests")
 }
 
-model communities {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String    @db.VarChar(255)
-  description String?   @default("") @db.Text
-  created_by  String    @db.Uuid
-  creator     User      @relation("community_creator", fields: [created_by], references: [id], onDelete: Cascade)
-  created_at  DateTime? @default(now()) @db.Timestamptz
-  updated_at  DateTime? @default(now()) @db.Timestamptz
-  deleted_at  DateTime? @db.Timestamptz
+model Community {
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String            @db.VarChar(255)
+  description   String?           @default("") @db.Text
+  createdBy     String            @map("created_by") @db.Uuid
+  creator       User              @relation("community_creator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime?         @map("deleted_at") @db.Timestamptz
+  members       CommunityMember[]
+  inviteLinks   InviteLink[]
+  contents      Content[]
+  assignments   Assignment[]
+  notifications Notification[]
 
-  members       community_members[]
-  invite_links  invite_links[]
-  contents      contents[]
-  assignments   assignments[]
-  notifications notifications[]
-
-  @@index([created_by], map: "idx_communities_created_by")
+  @@index([createdBy], map: "idx_communities_created_by")
   @@map("communities")
 }
 
-model community_members {
-  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  community_id      String      @db.Uuid
-  community         communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
-  user_id           String      @db.Uuid
-  user              User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  role_in_community String?     @default("student") @db.VarChar(50)
-  joined_at         DateTime?   @default(now()) @db.Timestamptz
-  created_at        DateTime?   @default(now()) @db.Timestamptz
-  updated_at        DateTime?   @default(now()) @db.Timestamptz
+model CommunityMember {
+  id              String        @id @default(uuid()) @db.Uuid
+  communityId     String        @map("community_id") @db.Uuid
+  community       Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId          String        @map("user_id") @db.Uuid
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleInCommunity CommunityRole @default(student) @map("role_in_community")
+  joinedAt        DateTime      @default(now()) @map("joined_at") @db.Timestamptz
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@unique([community_id, user_id])
-  @@index([user_id], map: "idx_community_members_user_id")
+  @@unique([communityId, userId])
+  @@index([userId], map: "idx_community_members_user_id")
   @@map("community_members")
 }
 
-model invite_links {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  community_id String      @db.Uuid
-  community    communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
-  created_by   String      @db.Uuid
-  creator      User        @relation(fields: [created_by], references: [id], onDelete: Cascade)
-  token        String      @unique @db.VarChar(255)
-  expires_at   DateTime?   @db.Timestamptz
-  max_uses     Int?
-  use_count    Int?        @default(0)
-  created_at   DateTime?   @default(now()) @db.Timestamptz
-  updated_at   DateTime?   @default(now()) @db.Timestamptz
+model InviteLink {
+  id          String    @id @default(uuid()) @db.Uuid
+  communityId String    @map("community_id") @db.Uuid
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  createdBy   String    @map("created_by") @db.Uuid
+  creator     User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  token       String    @unique @db.VarChar(255)
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz
+  maxUses     Int?      @map("max_uses")
+  useCount    Int       @default(0) @map("use_count")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("invite_links")
 }
 
-model contents {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  community_id String      @db.Uuid
-  community    communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
-  created_by   String      @db.Uuid
-  creator      User        @relation(fields: [created_by], references: [id], onDelete: Cascade)
-  content_type String      @db.VarChar(50)
-  created_at   DateTime?   @default(now()) @db.Timestamptz
-  updated_at   DateTime?   @default(now()) @db.Timestamptz
-  deleted_at   DateTime?   @db.Timestamptz
+model Content {
+  id          String      @id @default(uuid()) @db.Uuid
+  communityId String      @map("community_id") @db.Uuid
+  community   Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  createdBy   String      @map("created_by") @db.Uuid
+  creator     User        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  contentType ContentType @map("content_type")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?   @map("deleted_at") @db.Timestamptz
+  video       Video?
+  post        Post?
+  comments    Comment[]
 
-  video    videos?
-  post     posts?
-  comments comments[]
-
-  @@index([community_id], map: "idx_contents_community_id")
-  @@index([content_type], map: "idx_contents_type")
+  @@index([communityId], map: "idx_contents_community_id")
+  @@index([contentType], map: "idx_contents_type")
   @@map("contents")
 }
 
-model videos {
-  id            String   @id @db.Uuid
-  content       contents @relation(fields: [id], references: [id], onDelete: Cascade)
-  title         String   @db.VarChar(255)
-  description   String?  @default("") @db.Text
-  video_url     String   @db.Text
-  thumbnail_url String?  @default("") @db.Text
+model Video {
+  id           String  @id @db.Uuid
+  content      Content @relation(fields: [id], references: [id], onDelete: Cascade)
+  title        String  @db.VarChar(255)
+  description  String? @default("") @db.Text
+  videoUrl     String  @map("video_url") @db.Text
+  thumbnailUrl String? @default("") @map("thumbnail_url") @db.Text
 
   @@map("videos")
 }
 
-model posts {
-  id        String   @id @db.Uuid
-  content   contents @relation(fields: [id], references: [id], onDelete: Cascade)
-  post_type String   @db.VarChar(50)
-  body      String   @map("content") @db.Text
+model Post {
+  id       String   @id @db.Uuid
+  content  Content  @relation(fields: [id], references: [id], onDelete: Cascade)
+  postType PostType @map("post_type")
+  body     String   @map("content") @db.Text
 
   @@map("posts")
 }
 
-model comments {
-  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id           String     @db.Uuid
-  user              User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  content_id        String     @db.Uuid
-  content           contents   @relation(fields: [content_id], references: [id], onDelete: Cascade)
-  parent_comment_id String?    @db.Uuid
-  parent_comment    comments?  @relation("comment_replies", fields: [parent_comment_id], references: [id], onDelete: Cascade)
-  replies           comments[] @relation("comment_replies")
-  body              String     @map("content") @db.Text
-  created_at        DateTime?  @default(now()) @db.Timestamptz
-  updated_at        DateTime?  @default(now()) @db.Timestamptz
-  deleted_at        DateTime?  @db.Timestamptz
+model Comment {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId       String    @map("content_id") @db.Uuid
+  content         Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  parentCommentId String?   @map("parent_comment_id") @db.Uuid
+  parentComment   Comment?  @relation("comment_replies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[] @relation("comment_replies")
+  body            String    @map("content") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
 
-  @@index([content_id], map: "idx_comments_content_id")
+  @@index([contentId], map: "idx_comments_content_id")
   @@map("comments")
 }
 
-model assignments {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  community_id String      @db.Uuid
-  community    communities @relation(fields: [community_id], references: [id], onDelete: Cascade)
-  created_by   String      @db.Uuid
-  creator      User        @relation(fields: [created_by], references: [id], onDelete: Cascade)
-  title        String      @db.VarChar(255)
-  description  String?     @default("") @db.Text
-  file_url     String?     @default("") @db.Text
-  due_date     DateTime    @db.Timestamptz
-  created_at   DateTime?   @default(now()) @db.Timestamptz
-  updated_at   DateTime?   @default(now()) @db.Timestamptz
-  deleted_at   DateTime?   @db.Timestamptz
+model Assignment {
+  id          String                 @id @default(uuid()) @db.Uuid
+  communityId String                 @map("community_id") @db.Uuid
+  community   Community              @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  createdBy   String                 @map("created_by") @db.Uuid
+  creator     User                   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  title       String                 @db.VarChar(255)
+  description String?                @default("") @db.Text
+  fileUrl     String?                @default("") @map("file_url") @db.Text
+  dueDate     DateTime               @map("due_date") @db.Timestamptz
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?              @map("deleted_at") @db.Timestamptz
+  submissions AssignmentSubmission[]
 
-  submissions assignment_submissions[]
-
-  @@index([community_id], map: "idx_assignments_community_id")
+  @@index([communityId], map: "idx_assignments_community_id")
   @@map("assignments")
 }
 
-model assignment_submissions {
-  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  assignment_id String      @db.Uuid
-  assignment    assignments @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
-  student_id    String      @db.Uuid
-  student       User        @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  file_url      String      @db.Text
-  status        String?     @default("submitted") @db.VarChar(50)
-  grade         String?     @default("") @db.VarChar(50)
-  feedback      String?     @default("") @db.Text
-  submitted_at  DateTime?   @default(now()) @db.Timestamptz
-  created_at    DateTime?   @default(now()) @db.Timestamptz
-  updated_at    DateTime?   @default(now()) @db.Timestamptz
+model AssignmentSubmission {
+  id           String                     @id @default(uuid()) @db.Uuid
+  assignmentId String                     @map("assignment_id") @db.Uuid
+  assignment   Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String                     @map("student_id") @db.Uuid
+  student      User                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fileUrl      String                     @map("file_url") @db.Text
+  status       AssignmentSubmissionStatus @default(submitted)
+  grade        String?                    @default("") @db.VarChar(50)
+  feedback     String?                    @default("") @db.Text
+  submittedAt  DateTime                   @default(now()) @map("submitted_at") @db.Timestamptz
+  createdAt    DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@unique([assignment_id, student_id])
-  @@index([assignment_id], map: "idx_assignment_submissions_assignment_id")
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId], map: "idx_assignment_submissions_assignment_id")
   @@map("assignment_submissions")
 }
 
-model chat_requests {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sender_id    String    @db.Uuid
-  sender       User      @relation("chat_request_sender", fields: [sender_id], references: [id], onDelete: Cascade)
-  receiver_id  String    @db.Uuid
-  receiver     User      @relation("chat_request_receiver", fields: [receiver_id], references: [id], onDelete: Cascade)
-  status       String?   @default("pending") @db.VarChar(50)
-  responded_at DateTime? @db.Timestamptz
-  created_at   DateTime? @default(now()) @db.Timestamptz
-  updated_at   DateTime? @default(now()) @db.Timestamptz
+model ChatRequest {
+  id          String            @id @default(uuid()) @db.Uuid
+  senderId    String            @map("sender_id") @db.Uuid
+  sender      User              @relation("chat_request_sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String            @map("receiver_id") @db.Uuid
+  receiver    User              @relation("chat_request_receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  status      ChatRequestStatus @default(pending)
+  respondedAt DateTime?         @map("responded_at") @db.Timestamptz
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("chat_requests")
 }
 
-model conversations {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_one_id String    @db.Uuid
-  user_one    User      @relation("conversation_user_one", fields: [user_one_id], references: [id], onDelete: Cascade)
-  user_two_id String    @db.Uuid
-  user_two    User      @relation("conversation_user_two", fields: [user_two_id], references: [id], onDelete: Cascade)
-  created_at  DateTime? @default(now()) @db.Timestamptz
-  updated_at  DateTime? @default(now()) @db.Timestamptz
+model Conversation {
+  id        String        @id @default(uuid()) @db.Uuid
+  userOneId String        @map("user_one_id") @db.Uuid
+  userOne   User          @relation("conversation_user_one", fields: [userOneId], references: [id], onDelete: Cascade)
+  userTwoId String        @map("user_two_id") @db.Uuid
+  userTwo   User          @relation("conversation_user_two", fields: [userTwoId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  messages  ChatMessage[]
 
-  messages chat_messages[]
-
-  @@unique([user_one_id, user_two_id])
+  @@unique([userOneId, userTwoId])
   @@map("conversations")
 }
 
-model chat_messages {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id String        @db.Uuid
-  conversation    conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
-  sender_id       String        @db.Uuid
-  sender          User          @relation(fields: [sender_id], references: [id], onDelete: Cascade)
-  content         String        @db.Text
-  is_read         Boolean?      @default(false)
-  created_at      DateTime?     @default(now()) @db.Timestamptz
-  updated_at      DateTime?     @default(now()) @db.Timestamptz
-  deleted_at      DateTime?     @db.Timestamptz
+model ChatMessage {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String       @map("sender_id") @db.Uuid
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content        String       @db.Text
+  isRead         Boolean      @default(false) @map("is_read")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
 
-  @@index([conversation_id], map: "idx_chat_messages_conversation_id")
+  @@index([conversationId], map: "idx_chat_messages_conversation_id")
   @@map("chat_messages")
 }
 
-model notifications {
-  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id      String       @db.Uuid
-  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  type         String       @db.VarChar(50)
-  ref_type     String       @db.VarChar(50)
-  ref_id       String       @db.Uuid
-  community_id String?      @db.Uuid
-  community    communities? @relation(fields: [community_id], references: [id], onDelete: Cascade)
-  message      String       @db.Text
-  is_read      Boolean?     @default(false)
-  created_at   DateTime?    @default(now()) @db.Timestamptz
-  updated_at   DateTime?    @default(now()) @db.Timestamptz
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  refType     String           @map("ref_type") @db.VarChar(50)
+  refId       String           @map("ref_id") @db.Uuid
+  communityId String?          @map("community_id") @db.Uuid
+  community   Community?       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  message     String           @db.Text
+  isRead      Boolean          @default(false) @map("is_read")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@index([user_id, created_at(sort: Desc)], map: "idx_notifications_user_id")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user_id")
   @@map("notifications")
 }
