@@ -1,7 +1,8 @@
+import { prisma } from "../db/index.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
-import { getActiveUserById } from "../repositories/user.repository.js";
+
 
 export const verifyJWT = asyncHandler(async (req, _, next) => {
   const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
@@ -13,7 +14,11 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     const userId = decodedToken?.id;
 
-    const user = await getActiveUserById(userId);
+    const user = await prisma.user.findUnique({
+      where:{
+        id:userId,
+      }
+    });
 
     if (!user) {
       throw new ApiError(401, "Invalid Access Token");

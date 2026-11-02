@@ -30,10 +30,11 @@ const cookieOptions = {
   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 };
 
-const getUserByEmail = async ({email})=>{
-  return await prisma.user.findUnique({
+const getUserByEmail = async (email)=>{
+  return await prisma.user.findFirst({
     where:{
       email:email,
+      deletedAt:null,
     }
   })
 } 
@@ -66,7 +67,7 @@ const registerUser = asyncHandler(async (req, res) => {
  * Verify email controller
  */
 const verifyEmail = asyncHandler(async (req, res) => {
-  const token = req.query.token || req.body.token;
+  const token = req.query.token || req.body?.token;
 
   await verifyEmailService(token);
 
@@ -79,7 +80,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
  * Resend verification email controller
  */
 const resendVerificationEmail = asyncHandler(async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body || {};
 
   if (!email?.trim()) {
     throw new ApiError(400, "Email is required");
@@ -90,7 +91,7 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
 
   // Always return the same success response whether or not the account
   // exists — prevents leaking which emails are registered.
-  if (user && !user.is_email_verified) {
+  if (user && !user.isEmailVerified) {
     await generateAndSendVerificationEmail(user);
   }
 
@@ -173,7 +174,7 @@ const logoutUser = asyncHandler(async (req, res) => {
  * Forgot password request controller
  */
 const forgotPassword = asyncHandler(async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body || {};
 
   if (!email?.trim()) {
     throw new ApiError(400, "Email is required");
@@ -183,9 +184,10 @@ const forgotPassword = asyncHandler(async (req, res) => {
   const user = await getUserByEmail(normalizedEmail);
 
   if (!user) {
-    throw new ApiError(404, "User not found");
+    throw new ApiError(400, "No account found with that email");
   }
-
+  await generateAndSendPasswordResetEmail(user);
+  
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -199,8 +201,8 @@ const forgotPassword = asyncHandler(async (req, res) => {
  * Reset password via token controller
  */
 const resetPassword = asyncHandler(async (req, res) => {
-  const token = req.query.token || req.body.token;
-  const { newPassword } = req.body;
+  const token = req.query.token || req.body?.token;
+  const { newPassword } = req.body || {};
 
   await resetPasswordWithTokenService({ token, newPassword });
 

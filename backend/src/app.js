@@ -4,6 +4,10 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
+app.get("/",(req,res)=>{
+  res.send("Welcome to EduMathesis Platform");
+});
+
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN,
@@ -27,15 +31,15 @@ app.use((err, req, res, next) => {
     let message = err.message || "Internal Server Error";
 
     if (err.code === 11000) {
-        statusCode = 400;
-        const keys = Object.keys(err.keyValue || {});
-        message = keys.length ? `An account with this ${keys.join(', ')} already exists.` : "Duplicate entry found in database.";
+      statusCode = 400;
+      const keys = Object.keys(err.keyValue || {});
+      message = keys.length ? `An account with this ${keys.join(', ')} already exists.` : "Duplicate entry found in database.";
     }
 
     return res.status(statusCode).json({
-        success: false,
-        message,
-        errors: err.errors || []
+      success: false,
+      message,
+      errors: err.errors || []
     });
 });
 

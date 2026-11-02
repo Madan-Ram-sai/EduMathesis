@@ -7,7 +7,7 @@ const TOKEN_EXPIRY_HOURS = 24;
 
 export const generateAndSendVerificationEmail = async (user) => {
   // Deletes any existing unverified tokens for this user before issuing a new one.
-  await prisma.emailVerification.delete({
+  await prisma.emailVerification.deleteMany({
     where:{
       userId:user.id,
       verifiedAt:null

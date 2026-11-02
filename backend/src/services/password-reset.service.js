@@ -8,9 +8,10 @@ const TOKEN_EXPIRY_HOURS = 24;
 
 export const generateAndSendPasswordResetEmail = async (user) => {
   // Deletes any existing unused password reset tokens for this user
-  await prisma.passwordReset.delete({
+  await prisma.passwordReset.deleteMany({
     where:{
       userId:user.id,
+      usedAt:null,
     }
   });
 
@@ -62,17 +63,18 @@ export const resetPasswordWithTokenService = async ({ token, newPassword }) => {
   if (!record) {
     throw new ApiError(400, "Invalid password reset link");
   }
-  if (record.used_at) {
+  if (record.usedAt) {
     throw new ApiError(400, "This password reset link has already been used");
   }
-  if (new Date(record.expiresAt) < new Date()) {
+  const now = new Date();
+  if (record.expiresAt <= now) {
     throw new ApiError(400, "This password reset link has expired. Please request a new one.");
   }
 
   const newPasswordHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({
     where:{
-      userId:record.userId,
+      id:record.userId,
       deletedAt: null,
     },
     data:{
@@ -93,10 +95,9 @@ export const resetPasswordWithTokenService = async ({ token, newPassword }) => {
   
   //Even though your database columns use snake_case (user_id, expires_at, used_at), Prisma always returns JavaScript objects using your schema's camelCase property names.
   // This means properties like record.user_id, record.expires_at, and record.used_at will all evaluate to undefined.
-  await prisma.refreshToken.update({// here update works bez. jti is unique, else we need to use updateMany
+  await prisma.refreshToken.updateMany({// here update works bez. jti is unique, else we need to use updateMany
     where:{
       userId:record.userId,
-      jti:record.jti,
       isRevoked:false,
     },
     data:{
