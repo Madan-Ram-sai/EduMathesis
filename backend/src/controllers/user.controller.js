@@ -16,6 +16,7 @@ import {
   searchTeachersService,
   getUserProfileService,
 } from "../services/user.service.js";
+import { exchangeCodeForProfile } from "../services/oauth.provider.service.js";
 import {
   verifyEmailService,
   generateAndSendVerificationEmail,
@@ -123,15 +124,11 @@ const loginUser = asyncHandler(async (req, res) => {
  * OAuth Login / Registration controller (Google / GitHub)
  */
 const oauthLogin = asyncHandler(async (req, res) => {
-  const { provider, oauthId, email, name, avatarUrl } = req.body;
+  const { provider, code, redirectUri } = req.body;
 
-  const oauthData = await oauthLoginOrRegisterService({
-    provider,
-    oauthId,
-    email,
-    name,
-    avatarUrl,
-  });
+  // Verified profile comes from Google/GitHub, NOT from the browser
+  const profile = await exchangeCodeForProfile({ provider, code, redirectUri });
+  const oauthData = await oauthLoginOrRegisterService(profile);
 
   return res
     .status(200)

@@ -19,13 +19,14 @@ const pubSel = {
   isEmailVerified: true, oauthProvider: true, oauthId: true, createdAt: true, updatedAt: true,
 };
 
-const getActiveUserById = ({userID}) =>{
+const getActiveUserById = (userId) => {
   return prisma.user.findFirst({
-    where:{
-      id:userID,
-    }
+    where: {
+      id: userId,
+      deletedAt: null,
+    },
   });
-}
+};
 /**
  * Register a new user (always receives 'student' role by default).
  * Email verification is sent upon successful registration.
@@ -61,14 +62,13 @@ const registerUserService = async ({
       deletedAt:null,
     },
   });
+  // console.log("existingUsers:", existingUsers);
 
-  const emailTaken=existingUsers.some((r)=> r.email===normalizedEmail);//if any one with eamil exist then a row will be in existedusers and we check
-  if (emailTaken) {
+  if (existingUsers?.email === normalizedEmail) {
     throw new ApiError(409, "User with this email already exists");
   }
-  
-  const usernameTaken=existingUsers.some((r)=> r.username===finalUsername);//if any one with eamil exist then a row will be in existedusers and we check
-  if (usernameTaken) {
+
+  if (existingUsers?.username === finalUsername) {
     throw new ApiError(409, "User with this username already exists");
   }
 
@@ -120,32 +120,31 @@ const loginUserService = async ({ email, username, password }) => {
   }
 
   const normalizedEmail = email?.toLowerCase().trim() || "";
-  // const user = await getUser({ email: normalizedEmail, username: username?.trim() || "" });
+  const identifier = normalizedEmail
+    ? { email: normalizedEmail }
+    : { username: username.trim() };
 
   const user = await prisma.user.findFirst({
     where: {
-        OR: [
-          { email: normalizedEmail },
-          { username: username?.trim() }
-        ]
-      },
-      deletedAt: null
+      ...identifier,
+      deletedAt: null,
+    },
   });
   if (!user) {
     throw new ApiError(401, "Invalid email/username or password");
   }
 
-  if (!user.password_hash) {
+  if (!user.passwordHash) {
     throw new ApiError(400, "This account uses OAuth login. Please log in with Google/GitHub.");
   }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid email/username or password");
   }
 
   // Requirement: Email verification required before login is allowed
-  if (!user.is_email_verified) {
+  if (!user.isEmailVerified) {
     throw new ApiError(403, "Email verification required. Please verify your email before logging in.");
   }
 
@@ -159,7 +158,7 @@ const loginUserService = async ({ email, username, password }) => {
     expiresAt: refresh.expiresAt,
   });
 
-  const { password_hash, ...loggedUser } = user;
+  const { passwordHash, ...loggedUser } = user;
 
   return {
     user: loggedUser,
@@ -186,7 +185,7 @@ const oauthLoginOrRegisterService = async ({ provider, oauthId, email, name, ava
 
   if (!user) {
     // Check if user exists by email
-    existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.user.findFirst({
       where: { email: normalizedEmail, deletedAt: null },
       select: { id: true },
     });
@@ -378,13 +377,7 @@ const changeUserPasswordService = async ({ userId, currentPassword, newPassword 
 
   // const userWithPassword = await getUser({ email: user.email, username: user.username });
   const userWithPassword = await prisma.user.findFirst({
-    where: {
-        OR: [
-          { email: normalizedEmail },
-          { username: username?.trim() }
-        ]
-      },
-      deletedAt: null
+    where: { id: userId, deletedAt: null },
   });
   if (!userWithPassword?.passwordHash) {
     throw new ApiError(400, "OAuth accounts do not have a password. Use password reset or OAuth login.");
