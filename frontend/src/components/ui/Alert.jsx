@@ -1,16 +1,15 @@
 import { motion } from "framer-motion";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Check, Info } from "lucide-react";
 
-export default function Alert({ kind = "error", children }) {
-  const Icon = kind === "error" ? AlertTriangle : CheckCircle2;
+export default function Alert({ kind = "err", children }) {
   return (
     <motion.div
-      className={`alert alert-${kind}`}
-      role={kind === "error" ? "alert" : "status"}
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0, x: kind === "error" ? [0, -6, 6, -4, 4, 0] : 0 }}
+      className={`alert ${kind}`}
+      role={kind === "err" ? "alert" : "status"}
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
     >
-      <Icon size={18} />
+      {kind === "ok" ? <Check size={18} /> : <Info size={18} />}
       <div>{children}</div>
     </motion.div>
   );

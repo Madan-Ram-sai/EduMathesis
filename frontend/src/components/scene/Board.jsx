@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import ProfPi from "./ProfPi";
 import SineGraph from "./SineGraph";
 
@@ -28,9 +29,15 @@ const fmt = (s) => `0:${String(s).padStart(2, "0")} / 0:10`;
  * The green board. Everything draws in one after another (see the --d delays in scene.css);
  * Scene.jsx waits for it to finish before showing the chat card.
  */
-export default function Board({ variant = "register", mood, sec = 0 }) {
+export default function Board({ variant = "register", mood }) {
   const cfg = lines[variant] || lines.register;
-  sec = Math.min(sec, 10); // the player clock is driven by Scene so the tab and the board stay in sync
+  const [sec, setSec] = useState(0);
+
+  // the little video-player bar on the board loops on its own, whether or not the board is visible
+  useEffect(() => {
+    const id = setInterval(() => setSec((s) => (s + 1) % 11), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <svg className="board" viewBox="0 0 720 384" role="img" aria-label="A blackboard showing a sine graph, taught by Prof. Pi">

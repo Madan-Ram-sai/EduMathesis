@@ -6,9 +6,9 @@ import { msg } from "../api/http";
 import { PasswordField } from "../components/ui/Field";
 import StrengthMeter from "../components/ui/StrengthMeter";
 import StatusOrb from "../components/ui/StatusOrb";
+import Bubble from "../components/ui/Bubble";
 import Button from "../components/ui/Button";
 import Alert from "../components/ui/Alert";
-import Badge from "../components/ui/Badge";
 
 export default function ResetPassword() {
   const [q] = useSearchParams();
@@ -41,24 +41,26 @@ export default function ResetPassword() {
       <div className="center">
         <StatusOrb kind="ok" />
         <h1>Password updated</h1>
-        <p>You're all set. Sign in with your new password.</p>
-        <Button onClick={() => nav("/login")}>Go to sign in</Button>
+        <p>You're all set. Log in with your new password.</p>
+        <Button onClick={() => nav("/login")} icon={<ArrowRight size={18} />}>Go to login</Button>
       </div>
     );
 
   return (
     <>
-      <Badge icon={KeyRound} />
-      <h1>Choose a <span className="hl">new password</span></h1>
-      <p className="sub">Make it memorable for you, hard for everyone else.</p>
-      <form className="form" onSubmit={submit} noValidate style={{ marginTop: 0 }}>
+      <div className="head">
+        <Bubble icon={KeyRound} />
+        <h1>Choose a <span className="hl">new password</span></h1>
+        <p>Make it something you'll remember but others won't guess.</p>
+      </div>
+      <form className="form" onSubmit={submit} noValidate>
         {err && <Alert>{err}</Alert>}
         <PasswordField label="New password" value={pw} onChange={(e) => { setPw(e.target.value); setErr(""); }} autoComplete="new-password" placeholder="At least 8 characters" autoFocus />
         <StrengthMeter pw={pw} />
         <PasswordField label="Confirm password" value={again} onChange={(e) => { setAgain(e.target.value); setErr(""); }} autoComplete="new-password" placeholder="Type it once more" />
-        <Button type="submit" loading={busy} disabled={!token} icon={<ArrowRight size={18} />}>Update password</Button>
+        <Button type="submit" loading={busy} disabled={!token} icon={<KeyRound size={18} />}>Update password</Button>
       </form>
-      <p className="foot">Back to <Link to="/login">Sign in</Link></p>
+      <p className="foot">Back to <Link to="/login">Log in</Link></p>
     </>
   );
 }

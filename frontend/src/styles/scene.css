@@ -2,9 +2,12 @@
 
 /* one stage: the board and the chat take turns in the same box */
 .showbox { position: relative; height: 440px; }
-.showbox-in { position: absolute; inset: 0; display: flex; align-items: center; }
-.showbox-in > .board { height: 100%; }
-.showbox-in > .chat { width: 100%; }
+/* both scenes stay mounted and keep playing; only the visible layer changes */
+.layer { position: absolute; inset: 0; display: flex; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s, visibility 0s 0.25s; }
+.layer.on { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 0.25s; animation: layerIn 0.35s ease both; }
+@keyframes layerIn { from { transform: translateY(14px) scale(0.98); } to { transform: none; } }
+.layer > .board { height: 100%; }
+.layer > .chat { width: 100%; }
 
 /* ---------- the board ---------- */
 .board { display: block; width: 100%; height: auto; filter: drop-shadow(0 18px 26px rgba(20, 30, 60, 0.28)); overflow: visible; }
@@ -25,7 +28,7 @@
 @keyframes draw { 0% { opacity: 1; stroke-dashoffset: 1; } 100% { opacity: 1; stroke-dashoffset: 0; } }
 
 /* ---------- Prof. Pi ---------- */
-.pi .pupil { transition: transform 0.1s ease-out, opacity 0.2s; }
+.pi .pupil { transition: transform 0.04s linear, opacity 0.2s; }
 .pi .hands { opacity: 0; transform: translateY(18px); transition: opacity 0.25s, transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1); }
 .pi.hide .hands { opacity: 1; transform: none; }
 .pi.hide .pupil { opacity: 0; }
@@ -43,11 +46,7 @@
 .stage-tab { position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; height: 48px; border: 0; background: transparent; color: var(--ink-2); font-weight: 800; font-size: 0.92rem; overflow: hidden; transition: background 0.2s, color 0.2s; }
 .stage-tab:hover { background: color-mix(in srgb, var(--a) 18%, transparent); }
 .stage-tab.on { color: #22304d; }
-.stage-tab .fill { position: absolute; inset: 0; transform-origin: left; background: var(--coral); animation: fillbar var(--ms, 10s) linear forwards; }
-.stage-tab.on:not(:has(.fill)) { background: var(--coral); }
-.stage-tab .lbl, .stage-tab small { position: relative; display: inline-flex; align-items: center; gap: 6px; }
-.stage-tab small { font-weight: 700; opacity: 0.7; font-size: 0.78rem; }
-@keyframes fillbar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.stage-tab.on { background: var(--coral); }
 .stage-hint { margin: -4px 6px 2px; color: var(--ink-2); font-size: 0.8rem; font-weight: 600; }
 
 /* ---------- today note + community chip + notice ---------- */

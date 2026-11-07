@@ -1,36 +1,18 @@
 import { motion } from "framer-motion";
-import { Check, KeyRound, Mail, MailCheck, X } from "lucide-react";
+import { Check, Mail, X } from "lucide-react";
 
-const map = {
-  sent: [MailCheck, "--mint"],
-  loading: [Mail, "--sky"],
-  ok: [Check, "--mint"],
-  bad: [X, "--rose"],
-  key: [KeyRound, "--yel"],
-};
-
+/** kind: "loading" | "ok" | "bad" | "sent" */
 export default function StatusOrb({ kind }) {
-  const [Icon, c] = map[kind];
+  const Icon = { ok: Check, bad: X, sent: Mail }[kind];
   return (
-    <div className="orb" style={{ "--c": `var(${c})` }}>
-      {[0, 1].map((i) => (
-        <motion.span
-          key={i}
-          className="ripple"
-          initial={{ scale: 0.6, opacity: 0.7 }}
-          animate={{ scale: 1.7, opacity: 0 }}
-          transition={{ duration: 2, repeat: Infinity, delay: i }}
-        />
-      ))}
-      <motion.div
-        key={kind}
-        className="core"
-        initial={{ scale: 0, rotate: -20 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 14 }}
-      >
-        <Icon size={34} />
-      </motion.div>
-    </div>
+    <motion.div
+      key={kind}
+      className={`orb ${kind}`}
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 380, damping: 18 }}
+    >
+      {kind === "loading" ? <span className="spin big" /> : <Icon size={34} strokeWidth={2.6} />}
+    </motion.div>
   );
 }

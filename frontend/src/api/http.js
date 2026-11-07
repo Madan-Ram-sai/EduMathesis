@@ -3,7 +3,8 @@ import axios from "axios";
 const http = axios.create({ baseURL: import.meta.env.VITE_API_URL, withCredentials: true });
 
 let refreshing = null;
-const skip = ["/refresh-token", "/login", "/register"];
+// Requests that must never trigger a silent token refresh (a 401 here is a real answer, not an expired session)
+const skip = ["/refresh-token", "/login", "/register", "/oauth", "/change-password", "/forgot-password", "/reset-password"];
 
 http.interceptors.response.use(
   (r) => r,
@@ -24,6 +25,6 @@ http.interceptors.response.use(
 );
 
 export const msg = (e) =>
-  e.response?.data?.message || (e.request ? "Can't reach the server. Is it running?" : "Something went wrong");
+  e?.response?.data?.message || (e?.request ? "Can't reach the server. Is it running?" : e?.message || "Something went wrong");
 
 export default http;

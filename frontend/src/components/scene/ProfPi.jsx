@@ -21,7 +21,7 @@ export default function ProfPi({ mood = "idle" }) {
       const dx = e.clientX - (r.left + r.width * 0.5);
       const dy = e.clientY - (r.top + r.height * 0.3);
       const d = Math.hypot(dx, dy) || 1;
-      const k = Math.min(1, d / 260) * 4.2;
+      const k = Math.min(1, d / 110) * 5.6; // reaches full travel quickly, so small cursor moves are visible
       const t = `translate(${((dx / d) * k).toFixed(2)}px, ${((dy / d) * k).toFixed(2)}px)`;
       if (left.current) left.current.style.transform = t;
       if (right.current) right.current.style.transform = t;
@@ -51,16 +51,16 @@ export default function ProfPi({ mood = "idle" }) {
 
       {/* head */}
       <rect x="10" y="26" width="110" height="58" rx="28" fill="#FFD166" stroke={INK} strokeWidth="4" />
-      <circle cx="46" cy="58" r="12" fill="#fff" fillOpacity=".9" stroke={INK} strokeWidth="3.5" />
-      <circle cx="84" cy="58" r="12" fill="#fff" fillOpacity=".9" stroke={INK} strokeWidth="3.5" />
-      <path d="M58 57h14" stroke={INK} strokeWidth="3.5" />
+      <circle cx="46" cy="58" r="14" fill="#fff" fillOpacity=".95" stroke={INK} strokeWidth="3.5" />
+      <circle cx="84" cy="58" r="14" fill="#fff" fillOpacity=".95" stroke={INK} strokeWidth="3.5" />
+      <path d="M60 57h10" stroke={INK} strokeWidth="3.5" />
       <g className="pupil" ref={left}>
-        <circle cx="46" cy="58" r="4.2" fill={INK} />
-        <circle cx="47.5" cy="56.5" r="1.4" fill="#fff" />
+        <circle cx="46" cy="58" r="6.4" fill={INK} />
+        <circle cx="48.2" cy="55.6" r="2" fill="#fff" />
       </g>
       <g className="pupil" ref={right}>
-        <circle cx="84" cy="58" r="4.2" fill={INK} />
-        <circle cx="85.5" cy="56.5" r="1.4" fill="#fff" />
+        <circle cx="84" cy="58" r="6.4" fill={INK} />
+        <circle cx="86.2" cy="55.6" r="2" fill="#fff" />
       </g>
       <path className="smile" d="M55 74 Q65 82 75 74" stroke={INK} strokeWidth="3.5" fill="none" strokeLinecap="round" />
       <ellipse cx="27" cy="72" rx="7" ry="4.5" fill="#FF8A68" fillOpacity=".55" />
@@ -68,8 +68,8 @@ export default function ProfPi({ mood = "idle" }) {
 
       {/* hands that cover the eyes */}
       <g className="hands">
-        <ellipse cx="46" cy="58" rx="16" ry="14" fill="#FFD166" stroke={INK} strokeWidth="4" />
-        <ellipse cx="84" cy="58" rx="16" ry="14" fill="#FFD166" stroke={INK} strokeWidth="4" />
+        <ellipse cx="46" cy="58" rx="17" ry="15" fill="#FFD166" stroke={INK} strokeWidth="4" />
+        <ellipse cx="84" cy="58" rx="17" ry="15" fill="#FFD166" stroke={INK} strokeWidth="4" />
       </g>
 
       {/* mortarboard */}

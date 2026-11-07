@@ -1,46 +1,59 @@
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Download, FileText, Hash, Send } from "lucide-react";
 import GlassCard from "../ui/GlassCard";
 import Face from "./Face";
-import { people } from "./people";
+import { people, ROOM } from "./people";
 
 const SPAN = 392; // length of the arc the paper plane flies along
 const ARC = `M0 44 Q${SPAN / 2} -16 ${SPAN} 44`;
 const ARC_BACK = `M${SPAN} 44 Q${SPAN / 2} -16 0 44`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Plays one chat once: typing -> paper plane flies -> message lands -> reaction pops. */
-function useChatRun(script) {
-  const [s, set] = useState({ msgs: [], typing: null, flight: null });
+/**
+ * Plays the chats one after the other, forever: typing -> paper plane flies -> message lands -> reaction pops.
+ * Each chat has its own pair of people. It keeps running even while the Lesson tab is showing.
+ */
+function useChatLoop(scripts, onToast) {
+  const [s, set] = useState({ cast: scripts[0].cast, msgs: [], typing: null, flight: null });
+  const toastRef = useRef(onToast);
+  toastRef.current = onToast;
 
   useEffect(() => {
     let dead = false;
     let n = 0;
     const up = (p) => set((v) => ({ ...v, ...p }));
     (async () => {
-      await wait(600);
-      for (const m of script.msgs) {
-        if (dead) return;
-        up({ typing: m.who });
-        await wait(1000);
-        if (dead) return;
-        const id = ++n;
-        up({ typing: null, flight: { id, from: m.who } });
-        await wait(650);
-        if (dead) return;
-        set((v) => ({ ...v, msgs: [...v.msgs, { ...m, id }] }));
+      for (let i = 0; !dead; i = (i + 1) % scripts.length) {
+        const { cast, msgs } = scripts[i];
+        up({ cast, msgs: [], typing: null, flight: null });
         await wait(700);
-        if (dead) return;
-        set((v) => ({ ...v, msgs: v.msgs.map((x) => (x.id === id ? { ...x, done: true } : x)) }));
-        await wait(600);
+        for (const m of msgs) {
+          if (dead) return;
+          up({ typing: m.who });
+          await wait(1200);
+          if (dead) return;
+          const id = ++n;
+          up({ typing: null, flight: { id, from: m.who } });
+          await wait(650);
+          if (dead) return;
+          set((v) => ({ ...v, msgs: [...v.msgs, { ...m, id }] }));
+          if (m.toast) {
+            toastRef.current?.({ key: `t${id}`, bell: true, ...m.toast });
+            setTimeout(() => !dead && toastRef.current?.(null), 3600);
+          }
+          await wait(800);
+          if (dead) return;
+          set((v) => ({ ...v, msgs: v.msgs.map((x) => (x.id === id ? { ...x, done: true } : x)) }));
+          await wait(1500);
+        }
+        await wait(2200);
       }
-      if (!dead && script.endTyping) up({ typing: script.endTyping });
     })();
     return () => {
       dead = true;
     };
-  }, [script]);
+  }, [scripts]);
 
   return s;
 }
@@ -111,9 +124,9 @@ function Plane({ flight, dir }) {
   );
 }
 
-export default function ChatCard({ script }) {
-  const { msgs, typing, flight } = useChatRun(script);
-  const { cast, room } = script;
+export default function ChatCard({ scripts, onToast }) {
+  const { cast, msgs, typing, flight } = useChatLoop(scripts, onToast);
+  const room = ROOM;
   const [a, b] = cast.map((id) => people[id]);
   const last = msgs[msgs.length - 1];
   const rcv = last && cast.find((c) => c !== last.who);

@@ -87,3 +87,6 @@ a.tile:hover, .tile.lift:hover { transform: translateY(-4px); }
 
 .skel { border-radius: 24px; height: 118px; background: linear-gradient(100deg, var(--field) 30%, color-mix(in srgb, var(--field) 40%, #fff) 50%, var(--field) 70%); background-size: 300% 100%; animation: shimmer 1.4s infinite; border: 1px solid var(--field-edge); }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+.how { margin: 0 0 18px; padding-left: 1.3rem; display: grid; gap: 8px; color: var(--ink-2); font-weight: 600; }
+.how li::marker { color: var(--ink); font-weight: 800; }

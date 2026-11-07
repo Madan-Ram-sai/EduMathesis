@@ -1,50 +1,53 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation, useOutlet } from "react-router-dom";
-import Shell from "../ui/Shell";
-import Glass from "../ui/Glass";
-import Stage from "../stage/Stage";
-import { StageProvider } from "./StageCtx";
+import Logo from "../ui/Logo";
+import Blobs from "../ui/Blobs";
+import GlassCard from "../ui/GlassCard";
+import ThemeToggle from "../ui/ThemeToggle";
+import Scene from "../scene/Scene";
+import { SceneProvider } from "../scene/SceneContext";
 
-const routes = {
-  "/login": { acc: "var(--coral)", stage: "lesson", side: "left" },
-  "/register": { acc: "var(--mint)", stage: "steps", side: "right" },
-  "/forgot-password": { acc: "var(--lilac)" },
-  "/reset-password": { acc: "var(--mint)" },
-  "/settings/change-password": { acc: "var(--rose)" },
-  "/verify-email": { acc: "var(--sky)" },
+/** Each page gets its own colour combo (see [data-page] in index.css). `hero` pages also show the board + chat. */
+const pageFor = (path) => {
+  if (path.startsWith("/login")) return { page: "login", hero: true };
+  if (path.startsWith("/register")) return { page: "register", hero: true };
+  if (path.startsWith("/forgot-password")) return { page: "forgot" };
+  if (path.startsWith("/reset-password") || path.startsWith("/verify-email")) return { page: "reset" };
+  return { page: "login" }; // oauth callback
 };
 
 export default function AuthLayout() {
   const outlet = useOutlet();
   const { pathname } = useLocation();
-  const r = routes[pathname] || routes["/forgot-password"];
+  const { page, hero } = pageFor(pathname);
 
   return (
-    <StageProvider>
-      <Shell>
-        <main className={`auth ${r.stage ? "has-stage" : "simple"}`} data-side={r.side} style={{ "--acc": r.acc }}>
-          {r.stage && (
-            <motion.aside layout="position" className="stage-col" transition={{ type: "spring", stiffness: 140, damping: 22 }}>
-              <Stage variant={r.stage} />
-            </motion.aside>
+    <SceneProvider>
+      <div className="page" data-page={page}>
+        <Blobs />
+        <ThemeToggle className="theme-fab" />
+        <main className={`auth ${hero ? "" : "simple"}`}>
+          {hero && (
+            <aside className="auth-scene">
+              <Scene key={page} variant={page} />
+            </aside>
           )}
-          <motion.section layout="position" className="card-col" transition={{ type: "spring", stiffness: 140, damping: 22 }}>
+          <GlassCard className="auth-card" glow={hero}>
+            <Logo />
             <AnimatePresence mode="wait">
               <motion.div
                 key={pathname}
-                className="card-wrap"
-                initial={{ opacity: 0, y: 22, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -14 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
               >
-                <i className="slab" />
-                <Glass tilt={2} className="card">{outlet}</Glass>
+                {outlet}
               </motion.div>
             </AnimatePresence>
-          </motion.section>
+          </GlassCard>
         </main>
-      </Shell>
-    </StageProvider>
+      </div>
+    </SceneProvider>
   );
 }

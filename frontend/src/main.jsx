@@ -4,20 +4,25 @@ import { BrowserRouter } from "react-router-dom";
 import { MotionConfig } from "framer-motion";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
-import { PrefsProvider } from "./context/PrefsContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import { ToastProvider } from "./context/ToastContext";
 import "./styles/index.css";
+import "./styles/ui.css";
 import "./styles/auth.css";
-import "./styles/stage.css";
+import "./styles/scene.css";
+import "./styles/app.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <MotionConfig reducedMotion="user">
-        <PrefsProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </PrefsProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </MotionConfig>
     </BrowserRouter>
   </StrictMode>

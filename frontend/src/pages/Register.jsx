@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, AtSign, Check, Mail, Sparkles, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, AtSign, Mail, Sparkles, User } from "lucide-react";
 import confetti from "canvas-confetti";
 import * as api from "../api/auth";
 import { msg } from "../api/http";
-import { isEmail } from "../utils/validate";
+import { isEmail, isUsername } from "../utils/validate";
 import { Field, PasswordField } from "../components/ui/Field";
 import StrengthMeter from "../components/ui/StrengthMeter";
 import AvatarPicker from "../components/ui/AvatarPicker";
 import StatusOrb from "../components/ui/StatusOrb";
+import OAuthButtons from "../components/ui/OAuthButtons";
 import Button from "../components/ui/Button";
 import Alert from "../components/ui/Alert";
-import OAuthRow from "../components/ui/OAuthRow";
-import { useStage } from "../components/auth/StageCtx";
+import { useScene } from "../components/scene/SceneContext";
 
 const slide = {
   in: (d) => ({ x: d * 40, opacity: 0 }),
@@ -22,16 +22,29 @@ const slide = {
 };
 
 function Sent({ email }) {
+  const scene = useScene();
   const [wait, setWait] = useState(30);
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
 
   useEffect(() => {
     confetti({
-      particleCount: 90, spread: 75, startVelocity: 32, origin: { y: 0.3 },
-      colors: ["#F08A70", "#F2C94C", "#8DD5B4", "#7DB7E3", "#C9B6FF"], disableForReducedMotion: true,
+      particleCount: 90,
+      spread: 75,
+      startVelocity: 32,
+      origin: { y: 0.3 },
+      colors: ["#FF8A68", "#FFD166", "#8EDDC0", "#8CC5FF", "#C9B6FF"],
+      disableForReducedMotion: true,
     });
+    scene?.setMood("cheer"); // Prof. Pi celebrates
+    const t = setTimeout(() => scene?.setMood("idle"), 2600);
+    return () => {
+      clearTimeout(t);
+      scene?.setMood("idle");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   useEffect(() => {
     if (!wait) return;
     const t = setTimeout(() => setWait((w) => w - 1), 1000);
@@ -42,7 +55,7 @@ function Sent({ email }) {
     try {
       await api.resendVerification(email);
       setErr("");
-      setNote("Fresh link on its way");
+      setNote("Fresh link on its way ✉️");
       setWait(30);
     } catch (x) {
       setErr(msg(x));
@@ -56,14 +69,13 @@ function Sent({ email }) {
       <p>We sent a verification link to <b>{email}</b>. Open it to activate your account.</p>
       {note && <Alert kind="ok">{note}</Alert>}
       {err && <Alert>{err}</Alert>}
-      <Button tone="ghost" disabled={wait > 0} onClick={resend}>{wait ? `Resend in ${wait}s` : "Resend email"}</Button>
-      <Link to="/login" className="soft">Back to sign in</Link>
+      <Button variant="ghost" disabled={wait > 0} onClick={resend}>{wait ? `Resend in ${wait}s` : "Resend email"}</Button>
+      <Link to="/login" className="soft">Back to login</Link>
     </div>
   );
 }
 
 export default function Register() {
-  const { setReg } = useStage();
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [f, setF] = useState({ name: "", email: "", password: "", username: "", bio: "" });
@@ -72,11 +84,6 @@ export default function Register() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    setReg(done ? 2 : step);
-    return () => setReg(0);
-  }, [step, done, setReg]);
 
   const set = (k) => (e) => {
     setF((s) => ({ ...s, [k]: e.target.value }));
@@ -89,7 +96,7 @@ export default function Register() {
       if (f.name.trim().length < 2) v.name = "Tell us your name";
       if (!isEmail(f.email.trim())) v.email = "That email doesn't look right";
       if (f.password.length < 8) v.password = "Use at least 8 characters";
-    } else if (f.username && !/^[a-zA-Z0-9_]{3,20}$/.test(f.username)) {
+    } else if (f.username && !isUsername(f.username)) {
       v.username = "3–20 letters, numbers or _";
     }
     setErrs(v);
@@ -98,6 +105,7 @@ export default function Register() {
 
   const go = (d) => {
     if (d > 0 && !check()) return;
+    setErr("");
     setDir(d);
     setStep((s) => s + d);
   };
@@ -121,12 +129,7 @@ export default function Register() {
       await api.register(fd);
       setDone(true);
     } catch (x) {
-      const m = msg(x);
-      if (x.response?.status === 409 && /email/i.test(m)) {
-        setDir(-1);
-        setStep(0);
-        setErrs({ email: m });
-      } else setErr(m);
+      setErr(msg(x));
     } finally {
       setBusy(false);
     }
@@ -136,46 +139,51 @@ export default function Register() {
 
   return (
     <>
-      <h1><span className="hl">Register</span></h1>
-      <p className="sub">Join classmates and teachers in one place.</p>
-      <OAuthRow verb="Sign up with" divider="OR REGISTER WITH EMAIL" />
-
-      <div className="steps" aria-label="Progress">
-        <span className="step on"><span>{step > 0 ? <Check size={12} /> : 1}</span>Details</span>
-        <div className="steps-line"><motion.i initial={false} animate={{ scaleX: step }} /></div>
-        <span className={`step ${step ? "on" : ""}`}><span>2</span>Profile</span>
+      <div className="head">
+        <h1>Start your <span className="hl">study circle</span></h1>
+        <p>Join classmates and teachers in one place. It takes about a minute.</p>
       </div>
+
+      <div className="stepper" aria-label={`Step ${step + 1} of 2`}>
+        <span className="n on">1</span>
+        <b>About you</b>
+        <div className="bar"><i style={{ width: step === 0 ? "46%" : "100%" }} /></div>
+        <span className={`n ${step === 1 ? "on" : ""}`}>2</span>
+        <b className={step === 1 ? "" : "dim"}>Your space</b>
+      </div>
+
+      {step === 0 && <OAuthButtons onError={setErr} />}
 
       <form className="form" onSubmit={submit} noValidate>
         {err && <Alert>{err}</Alert>}
         <AnimatePresence mode="wait" custom={dir} initial={false}>
-          <motion.div key={step} className="pane" variants={slide} custom={dir} initial="in" animate="mid" exit="out" transition={{ duration: 0.2 }}>
-            {step === 0 ? (
-              <>
-                <Field label="Full name" icon={User} value={f.name} onChange={set("name")} error={errs.name} autoComplete="name" placeholder="Your name" autoFocus />
-                <Field label="Email" icon={Mail} type="email" value={f.email} onChange={set("email")} error={errs.email} autoComplete="email" placeholder="you@college.edu" />
-                <PasswordField label="Password" value={f.password} onChange={set("password")} error={errs.password} autoComplete="new-password" placeholder="At least 8 characters" />
-                <StrengthMeter pw={f.password} />
-              </>
-            ) : (
-              <>
-                <AvatarPicker file={avatar} onChange={setAvatar} onError={(m) => setErrs((s) => ({ ...s, avatar: m }))} />
-                {errs.avatar && <p className="err">{errs.avatar}</p>}
-                <Field label="Username (optional)" icon={AtSign} value={f.username} onChange={set("username")} error={errs.username} autoComplete="username" placeholder="your_username" />
-                <Field label="Short bio (optional)" as="textarea" rows={3} maxLength={160} value={f.bio} onChange={set("bio")} placeholder="CSE sophomore. Loves graphs and chai." />
-              </>
-            )}
-          </motion.div>
+          {step === 0 ? (
+            <motion.div key="s0" className="form" custom={dir} variants={slide} initial="in" animate="mid" exit="out" transition={{ duration: 0.22 }}>
+              <Field label="Full name" icon={User} value={f.name} onChange={set("name")} error={errs.name} placeholder="Ada Lovelace" autoComplete="name" autoFocus />
+              <Field label="Email" icon={Mail} type="email" value={f.email} onChange={set("email")} error={errs.email} placeholder="you@college.edu" autoComplete="email" />
+              <PasswordField label="Password" value={f.password} onChange={set("password")} error={errs.password} placeholder="At least 8 characters" autoComplete="new-password" />
+              <StrengthMeter pw={f.password} />
+            </motion.div>
+          ) : (
+            <motion.div key="s1" className="form" custom={dir} variants={slide} initial="in" animate="mid" exit="out" transition={{ duration: 0.22 }}>
+              <AvatarPicker file={avatar} onChange={setAvatar} onError={setErr} />
+              <Field label="Username (optional)" icon={AtSign} value={f.username} onChange={set("username")} error={errs.username} placeholder="ada_codes" autoComplete="username" hint="We'll make one for you if you skip this." />
+              <Field label="Short bio (optional)" as="textarea" rows={3} maxLength={160} value={f.bio} onChange={set("bio")} placeholder="CSE · loves graphs and chai" />
+            </motion.div>
+          )}
         </AnimatePresence>
 
-        <div className="actions">
-          {step > 0 && <Button tone="ghost" onClick={() => go(-1)} icon={<ArrowLeft size={18} />} aria-label="Back" />}
-          <Button type="submit" loading={busy} icon={step ? <Sparkles size={18} /> : <ArrowRight size={18} />}>
-            {step ? (busy ? "Creating…" : "Register") : "Continue"}
-          </Button>
-        </div>
+        {step === 0 ? (
+          <Button type="submit" icon={<ArrowRight size={18} />}>Continue</Button>
+        ) : (
+          <div className="btn-row">
+            <Button type="button" variant="ghost" onClick={() => go(-1)} icon={<ArrowLeft size={18} />} aria-label="Back" />
+            <Button type="submit" loading={busy} icon={<Sparkles size={18} />}>{busy ? "Creating…" : "Create my account"}</Button>
+          </div>
+        )}
       </form>
-      <p className="foot">Already have an account? <Link to="/login">Sign in</Link></p>
+
+      <p className="foot">Already a member? <Link to="/login">Log in</Link></p>
     </>
   );
 }

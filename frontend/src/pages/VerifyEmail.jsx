@@ -21,7 +21,7 @@ export default function VerifyEmail() {
 
   useEffect(() => {
     if (!token || ran.current) return;
-    ran.current = true;
+    ran.current = true; // StrictMode runs effects twice; the token is single-use
     api.verifyEmail(token).then(() => setSt("ok")).catch((x) => { setSt("bad"); setErr(msg(x)); });
   }, [token]);
 
@@ -31,7 +31,7 @@ export default function VerifyEmail() {
     try {
       await api.resendVerification(email.trim());
       setErr("");
-      setNote("New link sent. Check your inbox");
+      setNote("New link sent. Check your inbox ✉️");
     } catch (x) {
       setErr(msg(x));
     }
@@ -45,7 +45,7 @@ export default function VerifyEmail() {
         <>
           <h1>You're verified!</h1>
           <p>Your email is confirmed. Time to jump in.</p>
-          <Button onClick={() => nav("/login")} icon={<ArrowRight size={18} />}>Continue to sign in</Button>
+          <Button onClick={() => nav("/login")} icon={<ArrowRight size={18} />}>Continue to login</Button>
         </>
       )}
       {st === "bad" && (
@@ -53,11 +53,11 @@ export default function VerifyEmail() {
           <h1>That link didn't work</h1>
           {err && <Alert>{err}</Alert>}
           {note && <Alert kind="ok">{note}</Alert>}
-          <form className="form" onSubmit={resend} noValidate style={{ width: "100%", marginTop: 0 }}>
+          <form className="form" onSubmit={resend} noValidate style={{ width: "100%", textAlign: "left" }}>
             <Field label="Get a fresh link" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@college.edu" />
             <Button type="submit">Resend verification</Button>
           </form>
-          <Link to="/login" className="soft">Back to sign in</Link>
+          <Link to="/login" className="soft">Back to login</Link>
         </>
       )}
     </div>

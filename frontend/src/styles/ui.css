@@ -31,19 +31,22 @@
     radial-gradient(120% 55% at 12% 0%, rgba(170, 195, 255, 0.22), transparent 55%),
     radial-gradient(80% 50% at 100% 100%, color-mix(in srgb, var(--a) 28%, transparent), transparent 60%);
 }
-/* soft light that follows the pointer */
-.glass::after {
+/* login/register only: a coloured light slides along the card's border (a thin ring, so it never covers text) */
+.glass.glow::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  padding: 2px;
   opacity: 0;
   transition: opacity 0.3s;
-  mix-blend-mode: soft-light;
-  background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.55), transparent 62%);
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--a) 90%, #fff), transparent 65%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
-.glass:hover::after { opacity: 1; }
+.glass.glow:hover::after { opacity: 1; }
 .glass > * { position: relative; }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {

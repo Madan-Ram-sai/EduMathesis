@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, MessageCircle } from "lucide-react";
 import Board from "./Board";
 import ChatCard from "./ChatCard";
@@ -8,11 +7,10 @@ import CommunityChip from "./CommunityChip";
 import NoticeCard from "./NoticeCard";
 import GlassCard from "../ui/GlassCard";
 import { useScene } from "./SceneContext";
-import { chats, notices } from "./people";
+import { chatsFor, notices } from "./people";
 import { prefersReducedMotion } from "../../utils/validate";
 
-const SCENE_MS = 10000; // each scene plays for 10 s, then the next one takes over
-const clock = (s) => `0:${String(Math.min(s, 10)).padStart(2, "0")}/0:10`;
+const SCENE_MS = 10000; // hidden timer: how long each scene is on screen before the next one (until you click a tab)
 
 const TABS = [
   { id: "lesson", label: "Lesson", Icon: BookOpen },
@@ -20,73 +18,56 @@ const TABS = [
 ];
 
 /**
- * ONE stage that plays the green board first, then the chat, one after the other (then it loops).
- * The tabs show progress and are clickable: click one to jump straight to that scene.
+ * One stage with two layers: the green board and the chat.
+ *  - They play one after the other (board first), switching on a hidden timer.
+ *  - Click a tab and it STAYS on that tab (the timer stops).
+ *  - Both keep running in the background; switching tabs never restarts either of them.
  * Remount with a new `key` (AuthLayout does this per page) to replay from the start.
  */
 export default function Scene({ variant = "register" }) {
   const scene = useScene();
   const auto = !prefersReducedMotion();
   const [stage, setStage] = useState("lesson");
-  const [run, setRun] = useState(0); // bump to restart the current scene (clicking its own tab)
-  const [sec, setSec] = useState(0);
-  const [done, setDone] = useState({ lesson: false, chat: false });
+  const [locked, setLocked] = useState(false);
+  const [chatLive, setChatLive] = useState(false); // the chat starts the first time it is shown, then never stops
+  const [toast, setToast] = useState(null);
+
+  if (stage === "chat" && !chatLive) setChatLive(true);
 
   useEffect(() => {
-    if (!auto) return;
-    setSec(0);
-    const tick = setInterval(() => setSec((s) => s + 1), 1000);
-    const next = setTimeout(() => {
-      setDone((d) => ({ ...d, [stage]: true }));
-      setStage((s) => (s === "lesson" ? "chat" : "lesson"));
-    }, SCENE_MS);
-    return () => {
-      clearInterval(tick);
-      clearTimeout(next);
-    };
-  }, [stage, run, auto]);
+    if (!auto || locked) return;
+    const t = setTimeout(() => setStage((s) => (s === "lesson" ? "chat" : "lesson")), SCENE_MS);
+    return () => clearTimeout(t);
+  }, [stage, locked, auto]);
 
-  const jump = (id) => {
+  const pick = (id) => {
+    setLocked(true);
     setStage(id);
-    setRun((r) => r + 1);
   };
 
-  const notice = stage === "chat" && sec < 4 ? null : notices[stage];
+  const notice = stage === "lesson" ? notices.lesson : toast;
 
   return (
     <div className="scene">
       <div className="showbox">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${stage}-${run}`}
-            className="showbox-in"
-            initial={{ opacity: 0, y: 18, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -12, scale: 0.98 }}
-            transition={{ duration: 0.3 }}
-          >
-            {stage === "lesson" ? (
-              <Board variant={variant} mood={scene?.mood} sec={auto ? sec : 5} />
-            ) : (
-              <ChatCard script={chats[variant] || chats.register} />
-            )}
-          </motion.div>
-        </AnimatePresence>
+        <div className={`layer ${stage === "lesson" ? "on" : ""}`} aria-hidden={stage !== "lesson"}>
+          <Board variant={variant} mood={scene?.mood} />
+        </div>
+        {chatLive && (
+          <div className={`layer ${stage === "chat" ? "on" : ""}`} aria-hidden={stage !== "chat"}>
+            <ChatCard scripts={chatsFor(variant)} onToast={setToast} />
+          </div>
+        )}
       </div>
 
       <GlassCard className="stage-tabs" role="tablist" aria-label="Preview">
-        {TABS.map(({ id, label, Icon }) => {
-          const on = stage === id;
-          return (
-            <button key={id} type="button" role="tab" aria-selected={on} className={`stage-tab ${on ? "on" : ""}`} onClick={() => jump(id)}>
-              {on && auto && <i key={`${stage}-${run}`} className="fill" style={{ "--ms": `${SCENE_MS}ms` }} />}
-              <span className="lbl"><Icon size={15} /> {label}</span>
-              <small>{on ? clock(sec) : done[id] ? "done" : "next"}</small>
-            </button>
-          );
-        })}
+        {TABS.map(({ id, label, Icon }) => (
+          <button key={id} type="button" role="tab" aria-selected={stage === id} className={`stage-tab ${stage === id ? "on" : ""}`} onClick={() => pick(id)}>
+            <Icon size={15} /> {label}
+          </button>
+        ))}
       </GlassCard>
-      <p className="stage-hint">Plays one after the other. Click a tab to jump.</p>
+      <p className="stage-hint">Plays one after the other. Click a tab to stay on it.</p>
 
       <div className="below">
         <TodoNote />

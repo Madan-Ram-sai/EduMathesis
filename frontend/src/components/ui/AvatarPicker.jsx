@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, Plus } from "lucide-react";
+import { getAvatarSrc } from "../../utils/avatar";
 
 const types = ["image/jpeg", "image/png", "image/webp"];
 
-export default function AvatarPicker({ file, onChange, onError }) {
+/** `current` = URL of the avatar the user already has (profile page). */
+export default function AvatarPicker({ file, onChange, onError, current }) {
   const ref = useRef(null);
   const [url, setUrl] = useState(null);
 
@@ -25,6 +27,8 @@ export default function AvatarPicker({ file, onChange, onError }) {
     onChange(f);
   };
 
+  const shown = url || current;
+
   return (
     <div className="avatar-pick">
       <motion.button
@@ -35,14 +39,18 @@ export default function AvatarPicker({ file, onChange, onError }) {
         onClick={() => ref.current.click()}
         aria-label="Choose profile photo"
       >
-        {url ? <img src={url} alt="Your avatar preview" /> : <Camera size={28} />}
+        {shown ? <img src={url || getAvatarSrc(current)} alt="Your avatar preview" /> : <Camera size={28} />}
         <span className="plus"><Plus size={14} /></span>
       </motion.button>
       <input ref={ref} type="file" accept={types.join(",")} hidden onChange={pick} />
       <div>
         <b>Profile photo</b>
         <small>
-          {file ? <button type="button" className="linkish" onClick={() => onChange(null)}>Remove</button> : "Optional · JPG, PNG or WEBP · 5 MB"}
+          {file ? (
+            <button type="button" className="linkish" onClick={() => onChange(null)}>Remove</button>
+          ) : (
+            "Optional · JPG, PNG or WEBP · 5 MB"
+          )}
         </small>
       </div>
     </div>

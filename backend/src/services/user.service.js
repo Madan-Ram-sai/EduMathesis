@@ -14,6 +14,13 @@ import {
 } from "./token.service.js";
 import { generateAndSendVerificationEmail } from "./email-verification.service.js";
 
+const defaultAvatars = Array.from(
+  { length: 40 },
+  (_, index) => `/avatars/avatar_${String(index + 1).padStart(2, "0")}.svg`,
+);
+const getRandomDefaultAvatar = () =>
+  defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
+
 const pubSel = {
   id: true, name: true, username: true, email: true, avatarUrl: true, bio: true, role: true,
   isEmailVerified: true, oauthProvider: true, oauthId: true, createdAt: true, updatedAt: true,
@@ -72,7 +79,7 @@ const registerUserService = async ({
     throw new ApiError(409, "User with this username already exists");
   }
 
-  let avatarUrl = "";
+  let avatarUrl = getRandomDefaultAvatar();
   if (avatarLocalPath) {
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     if (avatar?.url) {
@@ -210,7 +217,7 @@ const oauthLoginOrRegisterService = async ({ provider, oauthId, email, name, ava
           email: normalizedEmail,
           passwordHash: null,
           role: "student",
-          avatarUrl: avatarUrl || "",
+          avatarUrl: avatarUrl || getRandomDefaultAvatar(),
           bio: "",
           isEmailVerified: true,
           oauthProvider: provider,

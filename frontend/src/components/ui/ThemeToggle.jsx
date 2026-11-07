@@ -1,29 +1,30 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
-import { usePrefs } from "../../context/PrefsContext";
+import { useTheme } from "../../context/ThemeContext";
 
-export default function ThemeToggle() {
-  const { dark, setTheme } = usePrefs();
+export default function ThemeToggle({ className = "" }) {
+  const { theme, toggle } = useTheme();
+  const dark = theme === "dark";
   return (
-    <motion.button
+    <button
       type="button"
-      className="glass theme-toggle"
-      onClick={() => setTheme(dark ? "light" : "dark")}
+      className={`icon-btn glass ${className}`}
+      onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      whileHover={{ scale: 1.08, rotate: 12 }}
-      whileTap={{ scale: 0.92 }}
+      title={dark ? "Light mode" : "Dark mode"}
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
-          key={dark ? "m" : "s"}
-          initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+          key={theme}
+          initial={{ rotate: -80, opacity: 0, scale: 0.6 }}
           animate={{ rotate: 0, opacity: 1, scale: 1 }}
-          exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
-          transition={{ duration: 0.25 }}
+          exit={{ rotate: 80, opacity: 0, scale: 0.6 }}
+          transition={{ duration: 0.18 }}
+          style={{ display: "flex" }}
         >
-          {dark ? <Moon size={20} /> : <Sun size={20} />}
+          {dark ? <Sun size={18} /> : <Moon size={18} />}
         </motion.span>
       </AnimatePresence>
-    </motion.button>
+    </button>
   );
 }

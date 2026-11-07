@@ -13,6 +13,7 @@ const pages = {
   "/profile": "profile",
   "/teachers": "forgot",
   "/change-password": "change",
+  "/become-teacher": "reset",
   "/admin/teacher-requests": "reset",
 };
 
@@ -78,7 +79,7 @@ export default function AppShell() {
                   </div>
                   <NavLink to="/profile" role="menuitem"><User size={16} /> Profile</NavLink>
                   <NavLink to="/change-password" role="menuitem"><KeyRound size={16} /> Change password</NavLink>
-                  {user.role === "student" && <NavLink to="/" role="menuitem"><GraduationCap size={16} /> Become a teacher</NavLink>}
+                  {user.role === "student" && <NavLink to="/become-teacher" role="menuitem"><GraduationCap size={16} /> Become a teacher</NavLink>}
                   <button type="button" role="menuitem" onClick={logout}><LogOut size={16} /> Log out</button>
                 </motion.div>
               )}

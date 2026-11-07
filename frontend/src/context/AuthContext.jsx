@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as api from "../api/auth";
 
 const Ctx = createContext(null);
@@ -12,15 +12,26 @@ export function AuthProvider({ children }) {
     api.me().then(setUser).catch(() => {}).finally(() => setReady(true));
   }, []);
 
-  const signIn = async (body) => {
+  const signIn = useCallback(async (body) => {
     const d = await api.login(body);
     setUser(d.user);
     return d.user;
-  };
-  const signOut = async () => {
+  }, []);
+
+  const signInWithOAuth = useCallback(async (body) => {
+    const d = await api.oauth(body);
+    setUser(d.user);
+    return d.user;
+  }, []);
+
+  const signOut = useCallback(async () => {
     await api.logout().catch(() => {});
     setUser(null);
-  };
+  }, []);
 
-  return <Ctx.Provider value={{ user, ready, signIn, signOut }}>{children}</Ctx.Provider>;
+  const value = useMemo(
+    () => ({ user, ready, setUser, signIn, signInWithOAuth, signOut }),
+    [user, ready, signIn, signInWithOAuth, signOut]
+  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
