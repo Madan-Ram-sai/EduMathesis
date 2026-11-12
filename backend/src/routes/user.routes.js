@@ -42,14 +42,14 @@ router.route("/resend-verification").post(resendVerificationEmail);
 router.route("/login").post(loginUser);
 router.route("/oauth").post(oauthLogin);
 router.route("/refresh-token").post(refreshSession);
-router.route("/logout").post(logoutUser);
+// router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/forgot-password").post(forgotPassword);
 router.route("/reset-password").post(resetPassword);
 
 // ==========================================
 // PROTECTED ROUTES (AUTHENTICATED USERS)
 // ==========================================
-router.use(verifyJWT);
+router.use(verifyJWT);//Everything after this line will require authentication
 
 router.route("/me").get(getUserProfile);
 
@@ -73,6 +73,7 @@ router.route("/avatar").patch(
   updateAvatar
 );
 
+router.route("/logout").post(logoutUser);
 router.route("/change-password").post(changePassword);
 router.route("/teacher-request").post(requestTeacherRole);
 router.route("/teachers/search").get(searchTeachers);
